@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/lib/session";
 import { newId, programmeStatusLabels, run, vvRpc, type Programme, type Team } from "@/modules/vectovia/api";
 import { Field, History, StatusTag, selectClass, useLists, useProgrammes, useTeams, useVv } from "@/modules/vectovia/ui";
+import { SeasonsPanel } from "@/modules/vectovia/plan-panels";
 
 export const Route = createFileRoute("/app/vectovia/setup")({
   head: () => appHead("Set-up · Vectovia", "Surveillance programmes, and the species and trap types your council uses."),
@@ -73,6 +74,7 @@ function ProgrammeDetail({ ws, programme, teams, canManage }: { ws: string; prog
           {canManage ? <button type="button" onClick={() => setEditing(true)} className="rounded-md border border-primary px-3 py-1.5 text-sm font-medium text-primary">Edit programme</button> : null}
         </>
       )}
+      <SeasonsPanel ws={ws} programme={programme.id} canManage={canManage} />
       <History type="programme" id={programme.id} ws={ws} uid={session?.user.id} labels={{ starts_on: "start", ends_on: "end" }} />
     </div>
   );

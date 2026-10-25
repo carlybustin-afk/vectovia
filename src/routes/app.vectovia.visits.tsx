@@ -20,7 +20,7 @@ function VisitsPage() {
   );
 }
 
-const stateText = { overdue: "Overdue", due: "Due now", scheduled: "Scheduled" } as const;
+const stateText = { overdue: "Overdue", due: "Due now", scheduled: "Scheduled", off_season: "Out of season" } as const;
 
 function FieldWork() {
   const { session } = useSession();
@@ -59,11 +59,11 @@ function FieldWork() {
               return (
                 <li key={r.deployment_id} className="px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <StatusTag strong={r.state !== "scheduled"}>{r.state === "overdue" ? "▲ " : ""}{stateText[r.state]}</StatusTag>
+                    <StatusTag strong={r.state === "overdue" || r.state === "due"}>{r.state === "overdue" ? "▲ " : ""}{stateText[r.state]}</StatusTag>
                     <span className="font-semibold text-primary">{t?.identifier ?? "Trap"}</span>
                     <span className="text-primary">{s ? `${s.reference} · ${s.name}` : "Site"}</span>
                     <span className="text-xs text-muted-foreground">
-                      next due {day(r.next_due_on)} · every {r.visit_interval_days} days · {r.last_visit_at ? `last visit ${when(r.last_visit_at)}` : "not visited yet"} · {who(r.responsible_officer, uid)}
+                      {r.next_due_on ? `next due ${day(r.next_due_on)} · every ${r.visit_interval_days} days` : "no checks due until the next season starts"} · {r.last_visit_at ? `last visit ${when(r.last_visit_at)}` : "not visited yet"} · {who(r.responsible_officer, uid)}
                     </span>
                     {canRecord && recording !== r.deployment_id ? (
                       <button type="button" onClick={() => setRecording(r.deployment_id)} className="ml-auto rounded-md bg-signal-teal px-3 py-1.5 text-sm font-semibold text-deep-navy">Record visit</button>

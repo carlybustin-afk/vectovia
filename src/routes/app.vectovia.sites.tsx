@@ -15,6 +15,7 @@ import { LinksPanel } from "@/modules/vectovia/links";
 import { outcomeLabels } from "@/modules/vectovia/api";
 import { AreasPanel, BoundaryPanel, CompliancePanel, SharingPanel, siteShapes, useAreas } from "@/modules/vectovia/site-panels";
 import { siteTypeLabels } from "@/modules/vectovia/obligations";
+import { PlanPanel, SiteRiskPanel } from "@/modules/vectovia/plan-panels";
 
 export const Route = createFileRoute("/app/vectovia/sites")({
   head: () => appHead("Sites · Vectovia", "Surveillance sites: map and list, locations, access and programmes."),
@@ -121,6 +122,8 @@ function SiteDetail({ ws, site, programmes, canRecord, canManage }: { ws: string
       <BoundaryPanel ws={ws} site={site} canManage={canManage} />
       <AreasPanel ws={ws} site={site} canManage={canManage} />
       <CompliancePanel ws={ws} site={site} canManage={canManage} />
+      <PlanPanel ws={ws} site={site} canManage={canManage} uid={session?.user.id} />
+      <SiteRiskPanel ws={ws} site={site} canManage={canManage} uid={session?.user.id} />
       <SharingPanel ws={ws} site={site} canManage={canManage} />
     </div>
   );

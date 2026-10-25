@@ -9,6 +9,7 @@ import { loadContentRoles } from "@/modules/vectovia/library";
 import { checkKindLabels, obligationRpc, siteTypeLabels, type ObligationSet, type ObligationVersion, type Obligations } from "@/modules/vectovia/obligations";
 import { useObligations } from "@/modules/vectovia/site-panels";
 import { Field, StatusTag } from "@/modules/vectovia/ui";
+import { TemplatesSection } from "@/modules/vectovia/plan-panels";
 
 export const Route = createFileRoute("/app/vectovia/obligations")({
   head: () => appHead("Obligation sets · Vectovia", "National obligation sets: what each type of site must do, and how Vectovia shows it."),
@@ -37,13 +38,15 @@ function ObligationSets() {
   if (ob.isPending) return <Loading what="Loading obligation sets" />;
   if (ob.isError) return <ErrorState error={ob.error} />;
   const visible = ob.data.sets.filter((s) => ob.data.versions.some((v) => v.set_id === s.id));
-  if (!visible.length) return <EmptyState title="No obligation sets published yet">Sets appear here once the content team has reviewed and published them.</EmptyState>;
+  const templates = <TemplatesSection uid={uid} reviewer={!!roles.data?.reviewer} admin={!!roles.data?.admin} />;
+  if (!visible.length) return <div className="space-y-6"><EmptyState title="No obligation sets published yet">Sets appear here once the content team has reviewed and published them.</EmptyState>{templates}</div>;
   return (
     <div className="space-y-6">
       {roles.data && (roles.data.reviewer || roles.data.admin)
         ? <p className="rounded-md border border-accent bg-secondary p-3 text-sm text-primary">You're on the content team, so you also see drafts. A reviewer checks a draft against its sources; a different content admin publishes it. Only published versions can be adopted by sites.</p>
         : null}
       {visible.map((s) => <SetCard key={s.id} set={s} data={ob.data} uid={uid} reviewer={!!roles.data?.reviewer} admin={!!roles.data?.admin} />)}
+      {templates}
     </div>
   );
 }

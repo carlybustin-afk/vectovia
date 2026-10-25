@@ -137,7 +137,7 @@ export type Sample = {
 };
 export type ScheduleRow = {
   deployment_id: string; trap_id: string; site_id: string; started_at: string; responsible_officer: string | null;
-  visit_interval_days: number; last_visit_at: string | null; next_due_on: string; state: "overdue" | "due" | "scheduled";
+  visit_interval_days: number; last_visit_at: string | null; next_due_on: string | null; state: "overdue" | "due" | "scheduled" | "off_season";
 };
 export type MemberRow = { user_id: string; role: string };
 
