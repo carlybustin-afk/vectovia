@@ -5,7 +5,7 @@
 --   * Site surveillance plans: versioned, approved with a review date; reviews and exercises logged.
 --   * Site risk assessments: at least yearly, versioned.
 --   * Compliance: plan and risk requirements worked out from records.
--- STATUS: PROPOSED FOR OWNER REVIEW. NOT APPLIED. Target: vectovia-mvp (widvaahmcqanxezfhjqd).
+-- STATUS: APPROVED BY THE OWNER AND APPLIED 2026-10-26 to vectovia-mvp (widvaahmcqanxezfhjqd).
 -- Rules as before: client-generated ids, retry-safe writes, checked functions only, history in
 -- vv_events, nothing deleted, organisations never see each other's records.
 -- =====================================================================
