@@ -22,7 +22,7 @@ const menu: readonly MenuGroup[] = [
     { heading: "Response", links: [{ to: "/app/vectovia/risk", label: "Risk and actions" }, { to: "/app/vectovia/incursions", label: "Incursions" }] },
     { heading: "Insight", links: [{ to: "/app/vectovia/analytics", label: "Analytics" }, { to: "/app/vectovia/reports", label: "Reports and exports" }] },
     { heading: "Set-up", links: [{ to: "/app/vectovia/sites", label: "Sites" }, { to: "/app/vectovia/traps", label: "Traps" },
-      { to: "/app/vectovia/library", label: "Species and trap library" }, { to: "/app/vectovia/setup", label: "Programmes and lists" }] },
+      { to: "/app/vectovia/obligations", label: "Obligation sets" }, { to: "/app/vectovia/library", label: "Species and trap library" }, { to: "/app/vectovia/setup", label: "Programmes and lists" }] },
   ] },
   { key: "settings", label: "Organisation settings", parts: [
     { links: [{ to: "/app/workspace", label: "Members" }, { to: "/app", label: "Your organisations", exact: true }] },

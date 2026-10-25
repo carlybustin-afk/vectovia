@@ -9,6 +9,8 @@ import "leaflet/dist/leaflet.css";
 export type MapPoint = { id: string; lat: number; lon: number; label: string; muted?: boolean };
 /** A circular area (e.g. an incursion response area), drawn as an outline. */
 export type MapCircle = { id: string; lat: number; lon: number; radius_m: number; label: string };
+/** An outline ([lat, lon] points): a site boundary, an operational area, a zone, another member's shared site, or one being drawn. */
+export type MapShape = { id: string; points: [number, number][]; label: string; style: "boundary" | "area" | "zone" | "shared" | "draft" };
 
 const MAPBOX = import.meta.env["VITE_MAPBOX_TOKEN"] as string | undefined;
 export const mapProvider = MAPBOX ? "Mapbox" : "OpenStreetMap";
@@ -32,14 +34,16 @@ const token = (name: string, fallback: string) =>
  * points: what to show. onPick: when given, clicking the map picks a location (and shows it).
  * picked: the currently picked location. onSelect: a point was clicked.
  */
-export function SurveillanceMap({ points, circles = [], onPick, picked, onSelect, height = 360, label }: {
-  points: MapPoint[]; circles?: MapCircle[]; onPick?: (lat: number, lon: number) => void; picked?: { lat: number; lon: number } | null;
-  onSelect?: (id: string) => void; height?: number; label: string;
+export function SurveillanceMap({ points, circles = [], shapes = [], onPick, picked, onSelect, height = 360, label, pickHint, keepView }: {
+  points: MapPoint[]; circles?: MapCircle[]; shapes?: MapShape[]; onPick?: (lat: number, lon: number) => void; picked?: { lat: number; lon: number } | null;
+  onSelect?: (id: string) => void; height?: number; label: string; pickHint?: string;
+  /** While drawing: fit the view once, then leave it where the person put it. */ keepView?: boolean;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<import("leaflet").Map | null>(null);
   const layer = useRef<import("leaflet").LayerGroup | null>(null);
   const L = useRef<typeof import("leaflet") | null>(null);
+  const fitted = useRef(false);
   const handlers = useRef({ onPick, onSelect });
   handlers.current = { onPick, onSelect };
 
@@ -78,8 +82,27 @@ export function SurveillanceMap({ points, circles = [], onPick, picked, onSelect
       if (b.isValid()) circleBounds.push([b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]);
       else { const d = c.radius_m / 111_320; circleBounds.push([c.lat - d, c.lon - d], [c.lat + d, c.lon + d]); }
     }
+    const shapeBounds: [number, number][] = [];
+    for (const sh of shapes) {
+      if (!sh.points.length) continue;
+      const style = {
+        boundary: { color: primary, weight: 3, fillColor: accent, fillOpacity: 0.18 },
+        area: { color: primary, weight: 2, dashArray: "2 4", fillColor: accent, fillOpacity: 0.3 },
+        zone: { color: accent, weight: 2, dashArray: "8 6", fill: false },
+        shared: { color: primary, weight: 2, dashArray: "1 6", fill: false },
+        draft: { color: accent, weight: 3, fillColor: accent, fillOpacity: 0.15 },
+      }[sh.style];
+      const shape = sh.style === "draft" && sh.points.length < 3
+        ? mod.polyline(sh.points, style)
+        : mod.polygon(sh.points, style);
+      shape.bindTooltip(sh.label).addTo(g);
+      if (sh.style === "draft") for (const p of sh.points) mod.circleMarker(p, { radius: 4, color: primary, weight: 2, fillColor: "#ffffff", fillOpacity: 1 }).addTo(g);
+      shapeBounds.push(...sh.points);
+    }
     if (picked) mod.circleMarker([picked.lat, picked.lon], { radius: 9, color: accent, weight: 3, fillColor: primary, fillOpacity: 1 }).bindTooltip("Chosen location").addTo(g);
-    const all = [...points.map((p) => [p.lat, p.lon] as [number, number]), ...circleBounds, ...(picked ? [[picked.lat, picked.lon] as [number, number]] : [])];
+    const all = [...points.map((p) => [p.lat, p.lon] as [number, number]), ...circleBounds, ...shapeBounds, ...(picked ? [[picked.lat, picked.lon] as [number, number]] : [])];
+    if (keepView && fitted.current) return;
+    if (all.length) fitted.current = true;
     if (all.length === 1) m.setView(all[0]!, Math.max(m.getZoom(), 14));
     else if (all.length > 1) m.fitBounds(mod.latLngBounds(all), { padding: [30, 30], maxZoom: 15 });
   };
@@ -89,7 +112,7 @@ export function SurveillanceMap({ points, circles = [], onPick, picked, onSelect
     <div>
       <div ref={el} role="region" aria-label={label} style={{ height }} className="z-0 w-full rounded-md border border-border" />
       <p className="mt-1 text-[11px] text-muted-foreground">
-        Map: {mapProvider}.{onPick ? " Click the map to set the location." : ""} The list below shows the same records.
+        Map: {mapProvider}.{onPick ? ` ${pickHint ?? "Click the map to set the location."}` : ""} The list below shows the same records.
       </p>
     </div>
   );

@@ -19,6 +19,7 @@ export type Site = {
   id: string; reference: string; name: string; line_1: string | null; line_2: string | null; town: string | null; postcode: string | null;
   uprn: string | null; latitude: number | null; longitude: number | null; location_description: string | null; access_instructions: string | null;
   status: "active" | "inactive"; created_by: string; created_at: string; updated_at: string; programmes: string[];
+  site_type: import("./obligations").SiteType; boundary: import("./geo").Polygon | null; zone_m: number; risk_reason: string | null;
 };
 export type Trap = {
   id: string; identifier: string; trap_type_id: string | null; council_trap_type_id: string | null;
@@ -52,7 +53,7 @@ export async function loadProgrammes(ws: string): Promise<Programme[]> {
 
 export async function loadSites(ws: string): Promise<Site[]> {
   const [s, sp] = await Promise.all([
-    db.from("vv_sites").select("id, reference, name, line_1, line_2, town, postcode, uprn, latitude, longitude, location_description, access_instructions, status, created_by, created_at, updated_at")
+    db.from("vv_sites").select("id, reference, name, line_1, line_2, town, postcode, uprn, latitude, longitude, location_description, access_instructions, status, created_by, created_at, updated_at, site_type, boundary, zone_m, risk_reason")
       .eq("workspace_id", ws).order("reference"),
     db.from("vv_site_programmes").select("site_id, programme_id").eq("workspace_id", ws),
   ]);

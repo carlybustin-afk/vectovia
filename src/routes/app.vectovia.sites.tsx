@@ -13,6 +13,8 @@ import { deploymentLine } from "@/modules/vectovia/fieldwork";
 import { Attachments } from "@/modules/vectovia/attachments";
 import { LinksPanel } from "@/modules/vectovia/links";
 import { outcomeLabels } from "@/modules/vectovia/api";
+import { AreasPanel, BoundaryPanel, CompliancePanel, SharingPanel, siteShapes, useAreas } from "@/modules/vectovia/site-panels";
+import { siteTypeLabels } from "@/modules/vectovia/obligations";
 
 export const Route = createFileRoute("/app/vectovia/sites")({
   head: () => appHead("Sites · Vectovia", "Surveillance sites: map and list, locations, access and programmes."),
@@ -32,6 +34,7 @@ function Sites() {
   const { ws, canRecord, canManage } = useVv();
   const sites = useSites(ws);
   const programmes = useProgrammes(ws);
+  const areas = useAreas(ws);
   const [q, setQ] = useState("");
   const [programme, setProgramme] = useState("");
   const [open, setOpen] = useState<string | "new" | null>(null);
@@ -60,7 +63,7 @@ function Sites() {
         {canRecord ? <button type="button" onClick={() => setOpen("new")} className="rounded-md bg-signal-teal px-4 py-2 text-sm font-semibold text-deep-navy">New site</button> : null}
       </div>
       {open === "new" ? <SiteForm ws={ws} programmes={programmes.data} canManage={canManage} onDone={(id) => setOpen(id)} onCancel={() => setOpen(null)} /> : null}
-      <SurveillanceMap label="Map of sites" points={points} onSelect={(id) => setOpen(id)} />
+      <SurveillanceMap label="Map of sites" points={points} onSelect={(id) => setOpen(id)} shapes={shown.flatMap((s) => siteShapes(s, areas.data ?? []))} />
       {shown.length === 0 ? (
         <EmptyState title={sites.data.length ? "No matching sites" : "No sites yet"}>
           {sites.data.length ? "Try a different search or programme." : canRecord ? "Add the first one with “New site”." : "Sites appear here once a field officer or manager adds them."}
@@ -72,6 +75,7 @@ function Sites() {
               <button type="button" aria-expanded={open === s.id} onClick={() => setOpen(open === s.id ? null : s.id)} className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2.5 text-left hover:bg-secondary/60">
                 <span className="font-semibold text-primary">{s.reference}</span>
                 <span className="text-primary">{s.name}</span>
+                {s.site_type !== "other" ? <StatusTag>{siteTypeLabels[s.site_type]}</StatusTag> : null}
                 {s.status === "inactive" ? <StatusTag>Inactive</StatusTag> : null}
                 <span className="text-xs text-muted-foreground">
                   {s.latitude !== null ? toGridRef(s.latitude, s.longitude!) ?? `${s.latitude.toFixed(5)}, ${s.longitude!.toFixed(5)}` : "No coordinates"}
@@ -93,7 +97,8 @@ function SiteDetail({ ws, site, programmes, canRecord, canManage }: { ws: string
   const [editing, setEditing] = useState(false);
   if (editing) return <div className="border-t border-border p-3"><SiteForm ws={ws} site={site} programmes={programmes} canManage={canManage} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} /></div>;
   return (
-    <div className="grid gap-3 border-t border-border bg-background p-3 text-sm sm:grid-cols-2">
+    <div className="space-y-5 border-t border-border bg-background p-3">
+    <div className="grid gap-3 text-sm sm:grid-cols-2">
       <dl className="space-y-1.5">
         <Row k="Location">{site.latitude !== null ? <>{toGridRef(site.latitude, site.longitude!, 10) ?? "Outside the National Grid"} <span className="text-muted-foreground">({site.latitude.toFixed(6)}, {site.longitude!.toFixed(6)})</span></> : "Not recorded"}</Row>
         <Row k="Address">{siteAddress(site) || "None (not needed)"}</Row>
@@ -109,8 +114,14 @@ function SiteDetail({ ws, site, programmes, canRecord, canManage }: { ws: string
         <Attachments ws={ws} recordType="site" recordId={site.id} canRecord={canRecord} uid={session?.user.id} />
         <LinksPanel ws={ws} recordType="site" recordId={site.id} canManage={canManage} uid={session?.user.id} />
         <History type="site" id={site.id} ws={ws} uid={session?.user.id}
-          labels={{ latitude: "latitude", longitude: "longitude", location_description: "description", access_instructions: "access", line_1: "address line 1" }} />
+          labels={{ latitude: "latitude", longitude: "longitude", location_description: "description", access_instructions: "access", line_1: "address line 1",
+            site_type: "type of site", zone_m: "zone (m)", risk_reason: "why monitored" }} />
       </div>
+    </div>
+      <BoundaryPanel ws={ws} site={site} canManage={canManage} />
+      <AreasPanel ws={ws} site={site} canManage={canManage} />
+      <CompliancePanel ws={ws} site={site} canManage={canManage} />
+      <SharingPanel ws={ws} site={site} canManage={canManage} />
     </div>
   );
 }
