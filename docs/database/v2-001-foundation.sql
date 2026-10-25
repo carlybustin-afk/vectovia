@@ -3,8 +3,7 @@
 -- products and access, teams, content review roles) plus the first-build
 -- Vectovia schema (sites, programmes, traps, field work, results, risk,
 -- actions, attachments, library, incursions, exports, external references).
--- STATUS: PROPOSED FOR OWNER REVIEW. NOT APPLIED. Target: vectovia-mvp (widvaahmcqanxezfhjqd).
---
+-- STATUS: APPROVED BY THE OWNER AND APPLIED 2026-10-26 to vectovia-mvp (widvaahmcqanxezfhjqd), in 5 parts.
 -- Built by pruning First Line's tested schema (revs 6–28, all with pgTAP tests)
 -- to the foundation and Vectovia objects only: no Investigations, no legal
 -- sources, no AI, no case links. Re-stated at the end: ensure_personal_workspace
@@ -15,13 +14,6 @@
 -- Design v2 changes (site-first, obligations, zones, national view) follow
 -- in later revisions.
 -- =====================================================================
---
--- PostgreSQL database dump
---
-
-
--- Dumped from database version 17.11
--- Dumped by pg_dump version 17.11
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -35,20 +27,11 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: content_role; Type: TYPE; Schema: public; Owner: -
---
-
 CREATE TYPE public.content_role AS ENUM (
     'author',
     'reviewer',
     'content_admin'
 );
-
-
---
--- Name: kp_status; Type: TYPE; Schema: public; Owner: -
---
 
 CREATE TYPE public.kp_status AS ENUM (
     'draft',
@@ -60,31 +43,16 @@ CREATE TYPE public.kp_status AS ENUM (
     'withdrawn'
 );
 
-
---
--- Name: workspace_kind; Type: TYPE; Schema: public; Owner: -
---
-
 CREATE TYPE public.workspace_kind AS ENUM (
     'personal',
     'organisation'
 );
-
-
---
--- Name: workspace_role; Type: TYPE; Schema: public; Owner: -
---
 
 CREATE TYPE public.workspace_role AS ENUM (
     'owner',
     'admin',
     'member'
 );
-
-
---
--- Name: accept_invitation(text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.accept_invitation(_token text) RETURNS uuid
     LANGUAGE plpgsql SECURITY DEFINER
@@ -106,11 +74,6 @@ begin
   perform public.write_audit(inv.workspace_id, 'invitation.accepted', inv.id);
   return inv.workspace_id;
 end $$;
-
-
---
--- Name: create_invitation(uuid, text, public.workspace_role); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.create_invitation(_ws uuid, _email text, _role public.workspace_role) RETURNS text
     LANGUAGE plpgsql SECURITY DEFINER
@@ -134,11 +97,6 @@ begin
   return tok;
 end $$;
 
-
---
--- Name: default_workspace_products(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.default_workspace_products() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -148,21 +106,11 @@ begin
   return new;
 end $$;
 
-
---
--- Name: forbid_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.forbid_update() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO ''
     AS $$
 begin raise exception '% is append-only', tg_table_name using errcode = '42501'; end $$;
-
-
---
--- Name: grant_content_role(uuid, public.content_role); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.grant_content_role(_user uuid, _role public.content_role) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -175,11 +123,6 @@ begin
   insert into public.content_roles (user_id, role, granted_by) values (_user, _role, auth.uid()) on conflict do nothing;
   perform public.write_audit(null, 'content_role.granted', _user, jsonb_build_object('role', _role));
 end $$;
-
-
---
--- Name: guard_immutable(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.guard_immutable() RETURNS trigger
     LANGUAGE plpgsql
@@ -194,11 +137,6 @@ begin
   end loop;
   return new;
 end $$;
-
-
---
--- Name: guard_membership(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.guard_membership() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
@@ -228,11 +166,6 @@ begin
   return coalesce(new, old);
 end $$;
 
-
---
--- Name: has_content_role(public.content_role[]); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.has_content_role(_roles public.content_role[]) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
@@ -241,22 +174,12 @@ CREATE FUNCTION public.has_content_role(_roles public.content_role[]) RETURNS bo
                  where user_id = auth.uid() and role = any(_roles))
 $$;
 
-
---
--- Name: has_product(uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.has_product(_ws uuid, _product text) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
     AS $$
   select coalesce((select enabled from public.workspace_products where workspace_id = _ws and product = _product), false)
 $$;
-
-
---
--- Name: has_product_access(uuid, text, text[]); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.has_product_access(_ws uuid, _product text, _levels text[]) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
@@ -265,11 +188,6 @@ CREATE FUNCTION public.has_product_access(_ws uuid, _product text, _levels text[
   select coalesce(public.product_level(_ws, _product) = any(_levels), false)
 $$;
 
-
---
--- Name: has_ws_role(uuid, public.workspace_role[]); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.has_ws_role(_ws uuid, _roles public.workspace_role[]) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
@@ -277,11 +195,6 @@ CREATE FUNCTION public.has_ws_role(_ws uuid, _roles public.workspace_role[]) RET
   select exists (select 1 from public.workspace_members
                  where workspace_id = _ws and user_id = auth.uid() and role = any(_roles))
 $$;
-
-
---
--- Name: invitation_for_email(text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.invitation_for_email(_token text) RETURNS TABLE(invitation_id uuid, workspace_id uuid, workspace_name text, email text, role public.workspace_role, expires_at timestamp with time zone, inviter_email text)
     LANGUAGE plpgsql STABLE SECURITY DEFINER
@@ -303,11 +216,6 @@ begin
     from public.workspaces w where w.id = i.workspace_id;
 end $_$;
 
-
---
--- Name: is_member(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.is_member(_ws uuid) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
@@ -316,22 +224,12 @@ CREATE FUNCTION public.is_member(_ws uuid) RETURNS boolean
                  where workspace_id = _ws and user_id = auth.uid())
 $$;
 
-
---
--- Name: is_platform_admin(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.is_platform_admin() RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
     AS $$
   select exists (select 1 from public.platform_admins where user_id = auth.uid())
 $$;
-
-
---
--- Name: kp_guard_version(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.kp_guard_version() RETURNS trigger
     LANGUAGE plpgsql
@@ -351,22 +249,12 @@ begin
   return new;
 end $$;
 
-
---
--- Name: kp_is_editor(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.kp_is_editor() RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
     AS $$
   select public.has_content_role(array['author', 'reviewer', 'content_admin']::public.content_role[])
 $$;
-
-
---
--- Name: may_invite(uuid, public.workspace_role); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.may_invite(_ws uuid, _role public.workspace_role) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
@@ -377,11 +265,6 @@ CREATE FUNCTION public.may_invite(_ws uuid, _role public.workspace_role) RETURNS
           or (_role = 'member' and public.has_ws_role(_ws, array['owner', 'admin']::public.workspace_role[])))
 $$;
 
-
---
--- Name: my_products(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.my_products() RETURNS TABLE(workspace_id uuid, product text, level text)
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
@@ -391,11 +274,6 @@ CREATE FUNCTION public.my_products() RETURNS TABLE(workspace_id uuid, product te
     join public.workspace_products p on p.workspace_id = m.workspace_id and p.enabled
    where m.user_id = auth.uid()
 $$;
-
-
---
--- Name: platform_workspaces(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.platform_workspaces() RETURNS TABLE(id uuid, kind public.workspace_kind, name text, investigations boolean, vectovia boolean, members bigint)
     LANGUAGE plpgsql STABLE SECURITY DEFINER
@@ -408,11 +286,6 @@ begin
            (select count(*) from public.workspace_members m where m.workspace_id = w.id)
       from public.workspaces w where w.kind = 'organisation' order by w.name;
 end $$;
-
-
---
--- Name: product_level(uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.product_level(_ws uuid, _product text) RETURNS text
     LANGUAGE sql STABLE SECURITY DEFINER
@@ -428,11 +301,6 @@ CREATE FUNCTION public.product_level(_ws uuid, _product text) RETURNS text
   where m.workspace_id = _ws and m.user_id = auth.uid()
 $$;
 
-
---
--- Name: record_invitation_email(uuid, uuid, text, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.record_invitation_email(_invitation uuid, _sent_by uuid, _status text, _provider_message_id text, _error text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -445,11 +313,6 @@ begin
   values (i.id, i.workspace_id, _sent_by, i.email, _status, nullif(left(_provider_message_id, 200), ''), nullif(left(_error, 500), ''));
   perform public.write_audit(i.workspace_id, case when _status = 'sent' then 'invitation.emailed' else 'invitation.email_failed' end, i.id, '{}'::jsonb);
 end $$;
-
-
---
--- Name: reissue_invitation(uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.reissue_invitation(_invitation uuid) RETURNS text
     LANGUAGE plpgsql SECURITY DEFINER
@@ -467,11 +330,6 @@ begin
   perform public.write_audit(i.workspace_id, 'invitation.reissued', i.id, '{}'::jsonb);
   return tok;
 end $$;
-
-
---
--- Name: remove_member(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.remove_member(_ws uuid, _user uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -491,11 +349,6 @@ begin
   perform public.write_audit(_ws, 'member.removed', _user);
 end $$;
 
-
---
--- Name: revoke_content_role(uuid, public.content_role); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.revoke_content_role(_user uuid, _role public.content_role) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -507,11 +360,6 @@ begin
   delete from public.content_roles where user_id = _user and role = _role;
   perform public.write_audit(null, 'content_role.revoked', _user, jsonb_build_object('role', _role));
 end $$;
-
-
---
--- Name: revoke_invitation(uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.revoke_invitation(_invitation uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -527,22 +375,12 @@ begin
   perform public.write_audit(ws, 'invitation.revoked', _invitation);
 end $$;
 
-
---
--- Name: role_in(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.role_in(_ws uuid, _user uuid) RETURNS text
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
     AS $$
   select role::text from public.workspace_members where workspace_id = _ws and user_id = _user
 $$;
-
-
---
--- Name: set_member_role(uuid, uuid, public.workspace_role); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.set_member_role(_ws uuid, _user uuid, _role public.workspace_role) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -560,18 +398,13 @@ begin
   perform public.write_audit(_ws, 'member.role_changed', _user, jsonb_build_object('role', _role));
 end $$;
 
-
---
--- Name: set_workspace_product(uuid, text, boolean); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.set_workspace_product(_ws uuid, _product text, _enabled boolean) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
     AS $$
 begin
   if not public.is_platform_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
-  if _product not in ('investigations', 'vectovia') then raise exception 'unknown product' using errcode = '22023'; end if;
+  if _product <> 'vectovia' then raise exception 'unknown product' using errcode = '22023'; end if;
   insert into public.workspace_products (workspace_id, product, enabled, updated_at, updated_by)
   values (_ws, _product, _enabled, now(), auth.uid())
   on conflict (workspace_id, product) do update set enabled = excluded.enabled, updated_at = now(), updated_by = auth.uid();
@@ -579,21 +412,11 @@ begin
   perform public.write_audit(_ws, 'product.' || case when _enabled then 'enabled' else 'disabled' end, null, jsonb_build_object('product', _product));
 end $$;
 
-
---
--- Name: touch_updated_at(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.touch_updated_at() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO ''
     AS $$
 begin new.updated_at := now(); return new; end $$;
-
-
---
--- Name: transfer_ownership(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.transfer_ownership(_ws uuid, _to uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -611,22 +434,12 @@ begin
   perform public.write_audit(_ws, 'ownership.transferred', _to);
 end $$;
 
-
---
--- Name: vv_can_read_attachment(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_can_read_attachment(_id uuid) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
     AS $$
   select exists (select 1 from public.vv_attachments a where a.id = _id and public.vv_can_see_site(a.site_id))
 $$;
-
-
---
--- Name: vv_can_run_incursion(uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_can_run_incursion(_incursion uuid) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
@@ -640,22 +453,12 @@ CREATE FUNCTION public.vv_can_run_incursion(_incursion uuid) RETURNS boolean
   )
 $$;
 
-
---
--- Name: vv_can_see_incursion(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_can_see_incursion(_incursion uuid) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
     AS $$
   select exists (select 1 from public.vv_incursions i where i.id = _incursion and public.vv_can_see_site(i.site_id))
 $$;
-
-
---
--- Name: vv_can_see_programme(uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_can_see_programme(_programme uuid) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
@@ -671,11 +474,6 @@ CREATE FUNCTION public.vv_can_see_programme(_programme uuid) RETURNS boolean
   )
 $$;
 
-
---
--- Name: vv_can_see_record(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_can_see_record(_type text, _id uuid) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
@@ -686,11 +484,6 @@ CREATE FUNCTION public.vv_can_see_record(_type text, _id uuid) RETURNS boolean
     when 'sample' then exists (select 1 from public.vv_samples s where s.id = _id and public.vv_can_see_site(s.site_id))
     else false end
 $$;
-
-
---
--- Name: vv_can_see_site(uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_can_see_site(_site uuid) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
@@ -706,11 +499,6 @@ CREATE FUNCTION public.vv_can_see_site(_site uuid) RETURNS boolean
   )
 $$;
 
-
---
--- Name: vv_check_time(timestamp with time zone, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_check_time(_t timestamp with time zone, _what text) RETURNS void
     LANGUAGE plpgsql STABLE
     SET search_path TO ''
@@ -718,11 +506,6 @@ CREATE FUNCTION public.vv_check_time(_t timestamp with time zone, _what text) RE
 begin
   if _t is not null and _t > now() + interval '10 minutes' then raise exception '% cannot be in the future', _what using errcode = '22023'; end if;
 end $$;
-
-
---
--- Name: vv_confirm_attachment(uuid, text, bigint); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_confirm_attachment(_id uuid, _sha256 text, _size_bytes bigint) RETURNS text
     LANGUAGE plpgsql SECURITY DEFINER
@@ -739,11 +522,6 @@ begin
   values (_id, a.workspace_id, st, null, 'system', jsonb_build_object('sha256_stored', lower(_sha256), 'size_bytes', _size_bytes));
   return st;
 end $$;
-
-
---
--- Name: vv_correct_attachment(uuid, text, timestamp with time zone, text, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_correct_attachment(_id uuid, _caption text, _captured_at timestamp with time zone, _capture_source text, _why text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -766,11 +544,6 @@ begin
                              'reason', trim(_why)));
 end $$;
 
-
---
--- Name: vv_correct_visit(uuid, timestamp with time zone, uuid, text, text, timestamp with time zone, timestamp with time zone, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_correct_visit(_visit uuid, _occurred_at timestamp with time zone, _officer uuid, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _not_completed_reason text, _why text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -792,11 +565,6 @@ begin
   select to_jsonb(x) into after from public.vv_visits x where x.id = _visit;
   perform public.vv_event(v.workspace_id, 'visit', _visit, 'corrected', public.vv_diff(to_jsonb(v), after) || jsonb_build_object('reason', trim(_why)));
 end $$;
-
-
---
--- Name: vv_deploy_trap(uuid, uuid, uuid, uuid, double precision, double precision, text, timestamp with time zone, uuid, integer); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_deploy_trap(_id uuid, _ws uuid, _trap uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _started_at timestamp with time zone, _officer uuid, _interval integer) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -827,11 +595,6 @@ begin
   perform public.vv_event(_ws, 'trap', _trap, 'deployed', jsonb_build_object('deployment_id', _id, 'site_id', _site));
 end $$;
 
-
---
--- Name: vv_diff(jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_diff(_before jsonb, _after jsonb) RETURNS jsonb
     LANGUAGE sql IMMUTABLE
     SET search_path TO ''
@@ -840,11 +603,6 @@ CREATE FUNCTION public.vv_diff(_before jsonb, _after jsonb) RETURNS jsonb
     from jsonb_object_keys(_after) k
    where k not in ('updated_at', 'updated_by') and (_before -> k) is distinct from (_after -> k)
 $$;
-
-
---
--- Name: vv_end_deployment(uuid, timestamp with time zone, text, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_end_deployment(_deployment uuid, _ended_at timestamp with time zone, _reason text, _note text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -871,11 +629,6 @@ begin
   perform public.vv_event(d.workspace_id, 'trap', d.trap_id, 'deployment_ended', jsonb_build_object('deployment_id', _deployment, 'status', next_status));
 end $$;
 
-
---
--- Name: vv_event(uuid, text, uuid, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_event(_ws uuid, _type text, _id uuid, _kind text, _detail jsonb) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -885,11 +638,6 @@ begin
   values (_ws, _type, _id, _kind, coalesce(_detail, '{}'::jsonb), auth.uid(),
           coalesce(public.product_level(_ws, 'vectovia'), 'unknown') || ' (' || coalesce(public.ws_role_of(_ws), 'unknown') || ')');
 end $$;
-
-
---
--- Name: vv_findings_awaiting_review(uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_findings_awaiting_review(_ws uuid) RETURNS TABLE(result_id uuid, sample_id uuid, site_id uuid, status text, taxon_id uuid, council_taxon_id uuid, quantity numeric, unit text, result_date date)
     LANGUAGE sql STABLE
@@ -903,22 +651,12 @@ CREATE FUNCTION public.vv_findings_awaiting_review(_ws uuid) RETURNS TABLE(resul
    order by v.result_date nulls last, r.created_at
 $$;
 
-
---
--- Name: vv_has(uuid, text[]); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_has(_ws uuid, _levels text[]) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
     AS $$
   select public.has_product_access(_ws, 'vectovia', _levels)
 $$;
-
-
---
--- Name: vv_lib_add_image(uuid, uuid, text, text, text, text, text, integer); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_lib_add_image(_id uuid, _version uuid, _file_name text, _caption text, _credit text, _licence text, _source_url text, _sort integer) RETURNS text
     LANGUAGE plpgsql SECURITY DEFINER
@@ -943,11 +681,6 @@ begin
   return path;
 end $$;
 
-
---
--- Name: vv_lib_publish(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_lib_publish(_version uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -965,11 +698,6 @@ begin
   perform public.write_audit(null, 'vv_library.published', _version, '{}'::jsonb);
 end $$;
 
-
---
--- Name: vv_lib_review(uuid, boolean, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_lib_review(_version uuid, _approve boolean, _note text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -984,11 +712,6 @@ begin
     reviewer_id = auth.uid(), reviewed_at = now(), review_note = trim(_note) where id = _version;
   perform public.write_audit(null, case when _approve then 'vv_library.reviewed' else 'vv_library.rejected' end, _version, '{}'::jsonb);
 end $$;
-
-
---
--- Name: vv_lib_save_draft(text, uuid, jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_lib_save_draft(_kind text, _subject uuid, _content jsonb, _sources jsonb) RETURNS uuid
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1011,11 +734,6 @@ begin
   return vid;
 end $$;
 
-
---
--- Name: vv_lib_submit(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_lib_submit(_version uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1025,11 +743,6 @@ begin
   if not found then raise exception 'not allowed' using errcode = '42501'; end if;
   perform public.write_audit(null, 'vv_library.submitted', _version, '{}'::jsonb);
 end $$;
-
-
---
--- Name: vv_link_incursion(uuid, uuid[], uuid[]); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_link_incursion(_id uuid, _results uuid[], _sites uuid[]) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1054,11 +767,6 @@ begin
   perform public.vv_event(i.workspace_id, 'incursion', _id, 'linked', jsonb_build_object('findings', to_jsonb(_results), 'sites', to_jsonb(_sites)));
 end $$;
 
-
---
--- Name: vv_log_attachment_access(uuid, text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_log_attachment_access(_id uuid, _action text, _actor uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1072,11 +780,6 @@ begin
   values (_id, a.workspace_id, _action, _actor,
           coalesce((select role::text from public.workspace_members where workspace_id = a.workspace_id and user_id = _actor), 'unknown'));
 end $$;
-
-
---
--- Name: vv_log_export(uuid, uuid, text, jsonb, jsonb, text, bigint, text, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_log_export(_id uuid, _ws uuid, _kind text, _scope jsonb, _counts jsonb, _file_name text, _size bigint, _sha256 text, _format_version text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1096,11 +799,6 @@ begin
     coalesce(public.product_level(_ws, 'vectovia'), 'unknown') || ' (' || coalesce(public.ws_role_of(_ws), 'unknown') || ')');
 end $$;
 
-
---
--- Name: vv_matrix_level(integer, integer); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_matrix_level(_likelihood integer, _consequence integer) RETURNS text
     LANGUAGE sql IMMUTABLE
     SET search_path TO ''
@@ -1108,11 +806,6 @@ CREATE FUNCTION public.vv_matrix_level(_likelihood integer, _consequence integer
   select case when _likelihood * _consequence <= 4 then 'low' when _likelihood * _consequence <= 9 then 'medium'
               when _likelihood * _consequence <= 16 then 'high' else 'very_high' end
 $$;
-
-
---
--- Name: vv_move_trap(uuid, uuid, uuid, double precision, double precision, text, timestamp with time zone, uuid, integer); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_move_trap(_deployment uuid, _new_id uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _moved_at timestamp with time zone, _officer uuid, _interval integer) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1126,11 +819,6 @@ begin
   perform public.vv_end_deployment(_deployment, _moved_at, 'moved', null);
   perform public.vv_deploy_trap(_new_id, d.workspace_id, d.trap_id, _site, _latitude, _longitude, _placement, coalesce(_moved_at, now()), _officer, _interval);
 end $$;
-
-
---
--- Name: vv_open_incursion(uuid, uuid, uuid[], text, uuid, uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_open_incursion(_id uuid, _site uuid, _results uuid[], _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text) RETURNS text
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1178,11 +866,6 @@ begin
   return ref;
 end $$;
 
-
---
--- Name: vv_record_notification(uuid, uuid, text, uuid, text, text, timestamp with time zone, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_record_notification(_id uuid, _incursion uuid, _kind text, _contact uuid, _recipient text, _method text, _notified_at timestamp with time zone, _reference text, _note text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1210,11 +893,6 @@ begin
     coalesce(public.product_level(i.workspace_id, 'vectovia'), 'unknown') || ' (' || coalesce(public.ws_role_of(i.workspace_id), 'unknown') || ')');
   perform public.vv_event(i.workspace_id, 'incursion', _incursion, 'notified', jsonb_build_object('notification_id', _id, 'kind', coalesce(c.kind, _kind)));
 end $$;
-
-
---
--- Name: vv_record_visit(uuid, uuid, timestamp with time zone, uuid, text, text, text, text, timestamp with time zone, timestamp with time zone, jsonb); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_record_visit(_id uuid, _deployment uuid, _occurred_at timestamp with time zone, _officer uuid, _outcome text, _reason text, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _samples jsonb) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1265,11 +943,6 @@ begin
   end if;
 end $$;
 
-
---
--- Name: vv_record_workspace(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_record_workspace(_type text, _id uuid) RETURNS uuid
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
@@ -1280,11 +953,6 @@ CREATE FUNCTION public.vv_record_workspace(_type text, _id uuid) RETURNS uuid
     when 'sample' then (select workspace_id from public.vv_samples where id = _id)
     end
 $$;
-
-
---
--- Name: vv_refresh_sample_status(uuid); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_refresh_sample_status(_sample uuid) RETURNS void
     LANGUAGE sql SECURITY DEFINER
@@ -1297,11 +965,6 @@ CREATE FUNCTION public.vv_refresh_sample_status(_sample uuid) RETURNS void
     then 'resulted' else 'awaiting_result' end
   where s.id = _sample
 $$;
-
-
---
--- Name: vv_register_attachment(uuid, text, uuid, text, text, bigint, text, text, timestamp with time zone, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_register_attachment(_id uuid, _record_type text, _record_id uuid, _file_name text, _mime_type text, _size_bytes bigint, _sha256 text, _caption text, _captured_at timestamp with time zone, _capture_source text) RETURNS text
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1341,11 +1004,6 @@ begin
   return path;
 end $$;
 
-
---
--- Name: vv_remove_external_ref(uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_remove_external_ref(_id uuid, _reason text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1362,11 +1020,6 @@ begin
   perform public.vv_event(r.workspace_id, r.record_type, r.record_id, 'external_ref_removed',
     jsonb_build_object('ref_id', _id, 'reason', trim(_reason)));
 end $$;
-
-
---
--- Name: vv_reopen_incursion(uuid, uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_reopen_incursion(_id uuid, _incursion uuid, _status text, _reason text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1392,11 +1045,6 @@ begin
   update public.vv_incursions set status = _status, updated_by = auth.uid(), updated_at = now() where id = _incursion;
   perform public.vv_event(i.workspace_id, 'incursion', _incursion, 'reopened', jsonb_build_object('stand_down_id', _id, 'to', _status));
 end $$;
-
-
---
--- Name: vv_save_action(uuid, uuid, uuid, text, text, uuid, date); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_save_action(_id uuid, _site uuid, _assessment uuid, _title text, _detail text, _owner uuid, _due date) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1426,11 +1074,6 @@ begin
     perform public.vv_event(s.workspace_id, 'action', _id, 'changed', public.vv_diff(to_jsonb(old), after));
   end if;
 end $$;
-
-
---
--- Name: vv_save_assessment(uuid, uuid, uuid[], integer, integer, text, text, jsonb, text, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_save_assessment(_id uuid, _site uuid, _results uuid[], _likelihood integer, _consequence integer, _final_level text, _override_reason text, _factors jsonb, _rationale text, _reason text) RETURNS integer
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1468,11 +1111,6 @@ begin
   return v;
 end $$;
 
-
---
--- Name: vv_save_council_taxon(uuid, uuid, text, text, boolean); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_save_council_taxon(_id uuid, _ws uuid, _scientific text, _common text, _active boolean) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1491,11 +1129,6 @@ begin
   perform public.vv_event(_ws, 'council_taxon', _id, case when old.id is null then 'created' else 'changed' end, jsonb_build_object('name', trim(_scientific)));
 end $$;
 
-
---
--- Name: vv_save_council_trap_type(uuid, uuid, text, text, boolean); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_save_council_trap_type(_id uuid, _ws uuid, _name text, _description text, _active boolean) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1513,11 +1146,6 @@ begin
   end if;
   perform public.vv_event(_ws, 'council_trap_type', _id, case when old.id is null then 'created' else 'changed' end, jsonb_build_object('name', trim(_name)));
 end $$;
-
-
---
--- Name: vv_save_external_ref(uuid, text, uuid, text, text, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_save_external_ref(_id uuid, _record_type text, _record_id uuid, _system text, _external_id text, _note text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1538,11 +1166,6 @@ begin
   perform public.vv_event(ws, _record_type, _record_id, 'external_ref_added',
     jsonb_build_object('ref_id', _id, 'system', trim(_system), 'external_id', trim(_external_id)));
 end $$;
-
-
---
--- Name: vv_save_incursion_task(uuid, uuid, text, text, text, uuid, date); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_save_incursion_task(_id uuid, _incursion uuid, _step text, _title text, _detail text, _owner uuid, _due date) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1574,11 +1197,6 @@ begin
   end if;
 end $$;
 
-
---
--- Name: vv_save_library_note(uuid, uuid, text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_save_library_note(_id uuid, _ws uuid, _kind text, _subject uuid, _note text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1595,11 +1213,6 @@ begin
     values (_id, _ws, _kind, case when _kind = 'species' then _subject end, case when _kind = 'trap' then _subject end, trim(_note), auth.uid());
   end if;
 end $$;
-
-
---
--- Name: vv_save_notify_contact(uuid, uuid, text, text, text, text, boolean); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_save_notify_contact(_id uuid, _ws uuid, _name text, _organisation text, _kind text, _detail text, _active boolean) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1621,11 +1234,6 @@ begin
     perform public.vv_event(_ws, 'notify_contact', _id, 'changed', public.vv_diff(to_jsonb(old), after));
   end if;
 end $$;
-
-
---
--- Name: vv_save_programme(uuid, uuid, text, text, text, date, date, uuid[]); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_save_programme(_id uuid, _ws uuid, _name text, _description text, _status text, _starts date, _ends date, _teams uuid[]) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1654,11 +1262,6 @@ begin
   perform public.vv_event(_ws, 'programme', _id, case when before is null then 'created' else 'changed' end,
     case when before is null then '{}'::jsonb else public.vv_diff(before, after) end);
 end $$;
-
-
---
--- Name: vv_save_result(uuid, uuid, text, uuid, uuid, numeric, text, text, text, text, text, date, text, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_save_result(_id uuid, _sample uuid, _status text, _taxon uuid, _council_taxon uuid, _quantity numeric, _unit text, _method text, _identified_by text, _laboratory text, _lab_reference text, _result_date date, _uncertainty text, _reason text) RETURNS integer
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1694,11 +1297,6 @@ begin
     jsonb_build_object('version', v, 'status', _status, 'sample_id', _sample) || case when v > 1 then jsonb_build_object('reason', trim(_reason)) else '{}'::jsonb end);
   return v;
 end $$;
-
-
---
--- Name: vv_save_site(uuid, uuid, text, text, text, text, text, text, double precision, double precision, text, text, text, uuid[]); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_save_site(_id uuid, _ws uuid, _name text, _line_1 text, _line_2 text, _town text, _postcode text, _uprn text, _latitude double precision, _longitude double precision, _description text, _access text, _status text, _programmes uuid[]) RETURNS text
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1748,11 +1346,6 @@ begin
   return ref;
 end $$;
 
-
---
--- Name: vv_save_trap(uuid, uuid, text, uuid, uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_save_trap(_id uuid, _ws uuid, _identifier text, _trap_type uuid, _council_trap_type uuid, _status text, _notes text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1783,11 +1376,6 @@ begin
     case when old.id is null then jsonb_build_object('identifier', trim(_identifier)) else public.vv_diff(to_jsonb(old), after) end);
 end $$;
 
-
---
--- Name: vv_set_action_status(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_set_action_status(_id uuid, _status text, _note text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1807,11 +1395,6 @@ begin
    where id = _id;
   perform public.vv_event(a.workspace_id, 'action', _id, _status, jsonb_build_object('note', nullif(trim(_note), '')));
 end $$;
-
-
---
--- Name: vv_set_incursion_step(uuid, text, text, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_set_incursion_step(_id uuid, _step text, _status text, _note text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1837,11 +1420,6 @@ begin
     jsonb_build_object('step', _step, 'from', old.status, 'to', _status, 'note', nullif(trim(_note), '')));
 end $$;
 
-
---
--- Name: vv_set_response_area(uuid, numeric, numeric, numeric, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_set_response_area(_id uuid, _lat numeric, _lon numeric, _radius_m numeric, _reason text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1859,11 +1437,6 @@ begin
   perform public.vv_event(old.workspace_id, 'incursion', _id, 'response_area',
     jsonb_build_object('from', old.response_area, 'to', area, 'reason', nullif(trim(_reason), '')));
 end $$;
-
-
---
--- Name: vv_stand_down(uuid, uuid, timestamp with time zone, text); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.vv_stand_down(_id uuid, _incursion uuid, _decided_at timestamp with time zone, _rationale text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
@@ -1893,11 +1466,6 @@ begin
   perform public.vv_event(i.workspace_id, 'incursion', _incursion, 'stood_down', jsonb_build_object('stand_down_id', _id, 'from', i.status));
 end $$;
 
-
---
--- Name: vv_update_incursion(uuid, text, uuid, uuid, uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_update_incursion(_id uuid, _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text, _reason text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
@@ -1926,11 +1494,6 @@ begin
     public.vv_diff(to_jsonb(old), after) || case when _status <> old.status then jsonb_build_object('reason', trim(_reason)) else '{}'::jsonb end);
 end $$;
 
-
---
--- Name: vv_visit_schedule(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.vv_visit_schedule(_ws uuid) RETURNS TABLE(deployment_id uuid, trap_id uuid, site_id uuid, started_at timestamp with time zone, responsible_officer uuid, visit_interval_days integer, last_visit_at timestamp with time zone, next_due_on date, state text)
     LANGUAGE sql STABLE
     SET search_path TO ''
@@ -1952,11 +1515,6 @@ CREATE FUNCTION public.vv_visit_schedule(_ws uuid) RETURNS TABLE(deployment_id u
    order by 8, 1
 $$;
 
-
---
--- Name: write_audit(uuid, text, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.write_audit(_ws uuid, _action text, _target uuid, _detail jsonb DEFAULT '{}'::jsonb) RETURNS void
     LANGUAGE sql SECURITY DEFINER
     SET search_path TO ''
@@ -1965,11 +1523,6 @@ CREATE FUNCTION public.write_audit(_ws uuid, _action text, _target uuid, _detail
   values (_ws, auth.uid(), _action, _target, coalesce(_detail, '{}'::jsonb))
 $$;
 
-
---
--- Name: ws_role_of(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.ws_role_of(_ws uuid) RETURNS text
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
@@ -1977,14 +1530,9 @@ CREATE FUNCTION public.ws_role_of(_ws uuid) RETURNS text
   select role::text from public.workspace_members where workspace_id = _ws and user_id = auth.uid()
 $$;
 
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: audit_events; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.audit_events (
     id bigint NOT NULL,
@@ -1996,11 +1544,6 @@ CREATE TABLE public.audit_events (
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-
---
--- Name: audit_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 ALTER TABLE public.audit_events ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.audit_events_id_seq
     START WITH 1
@@ -2010,22 +1553,12 @@ ALTER TABLE public.audit_events ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY
     CACHE 1
 );
 
-
---
--- Name: content_roles; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.content_roles (
     user_id uuid NOT NULL,
     role public.content_role NOT NULL,
     granted_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: invitation_emails; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.invitation_emails (
     id bigint NOT NULL,
@@ -2045,11 +1578,6 @@ CREATE TABLE public.invitation_emails (
     CONSTRAINT invitation_emails_to_email_check CHECK (((to_email = lower(to_email)) AND ((char_length(to_email) >= 3) AND (char_length(to_email) <= 320))))
 );
 
-
---
--- Name: invitation_emails_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 ALTER TABLE public.invitation_emails ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.invitation_emails_id_seq
     START WITH 1
@@ -2059,20 +1587,10 @@ ALTER TABLE public.invitation_emails ALTER COLUMN id ADD GENERATED ALWAYS AS IDE
     CACHE 1
 );
 
-
---
--- Name: platform_admins; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.platform_admins (
     user_id uuid NOT NULL,
     granted_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: product_access; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.product_access (
     workspace_id uuid NOT NULL,
@@ -2085,11 +1603,6 @@ CREATE TABLE public.product_access (
     CONSTRAINT product_access_product_check CHECK ((product = ANY (ARRAY['investigations'::text, 'vectovia'::text])))
 );
 
-
---
--- Name: profiles; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.profiles (
     id uuid NOT NULL,
     display_name text,
@@ -2098,11 +1611,6 @@ CREATE TABLE public.profiles (
     CONSTRAINT profiles_display_name_check CHECK ((char_length(display_name) <= 120))
 );
 
-
---
--- Name: team_members; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.team_members (
     team_id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2110,11 +1618,6 @@ CREATE TABLE public.team_members (
     added_by uuid,
     added_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: teams; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.teams (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -2125,11 +1628,6 @@ CREATE TABLE public.teams (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT teams_name_check CHECK (((char_length(name) >= 1) AND (char_length(name) <= 80)))
 );
-
-
---
--- Name: vv_actions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_actions (
     id uuid NOT NULL,
@@ -2157,21 +1655,11 @@ CREATE TABLE public.vv_actions (
     CONSTRAINT vv_actions_title_check CHECK (((char_length(title) >= 3) AND (char_length(title) <= 200)))
 );
 
-
---
--- Name: vv_assessment_results; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_assessment_results (
     assessment_id uuid NOT NULL,
     result_id uuid NOT NULL,
     workspace_id uuid NOT NULL
 );
-
-
---
--- Name: vv_assessment_versions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_assessment_versions (
     assessment_id uuid NOT NULL,
@@ -2202,11 +1690,6 @@ CREATE TABLE public.vv_assessment_versions (
     CONSTRAINT vv_assessment_versions_version_check CHECK ((version > 0))
 );
 
-
---
--- Name: vv_assessments; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_assessments (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2215,11 +1698,6 @@ CREATE TABLE public.vv_assessments (
     created_by uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: vv_attachment_events; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_attachment_events (
     id bigint NOT NULL,
@@ -2233,11 +1711,6 @@ CREATE TABLE public.vv_attachment_events (
     CONSTRAINT vv_attachment_events_action_check CHECK ((action = ANY (ARRAY['registered'::text, 'verified'::text, 'mismatch'::text, 'viewed'::text, 'downloaded'::text, 'caption_corrected'::text])))
 );
 
-
---
--- Name: vv_attachment_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_attachment_events ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.vv_attachment_events_id_seq
     START WITH 1
@@ -2246,11 +1719,6 @@ ALTER TABLE public.vv_attachment_events ALTER COLUMN id ADD GENERATED ALWAYS AS 
     NO MAXVALUE
     CACHE 1
 );
-
-
---
--- Name: vv_attachments; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_attachments (
     id uuid NOT NULL,
@@ -2288,11 +1756,6 @@ CREATE TABLE public.vv_attachments (
     CONSTRAINT vv_attachments_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'verified'::text, 'mismatch'::text])))
 );
 
-
---
--- Name: vv_council_taxa; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_council_taxa (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2305,11 +1768,6 @@ CREATE TABLE public.vv_council_taxa (
     CONSTRAINT vv_council_taxa_scientific_name_check CHECK (((char_length(scientific_name) >= 3) AND (char_length(scientific_name) <= 120)))
 );
 
-
---
--- Name: vv_council_trap_types; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_council_trap_types (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2321,11 +1779,6 @@ CREATE TABLE public.vv_council_trap_types (
     CONSTRAINT vv_council_trap_types_description_check CHECK ((char_length(description) <= 500)),
     CONSTRAINT vv_council_trap_types_name_check CHECK (((char_length(name) >= 3) AND (char_length(name) <= 120)))
 );
-
-
---
--- Name: vv_deployments; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_deployments (
     id uuid NOT NULL,
@@ -2355,11 +1808,6 @@ CREATE TABLE public.vv_deployments (
     CONSTRAINT vv_deployments_visit_interval_days_check CHECK (((visit_interval_days >= 1) AND (visit_interval_days <= 60)))
 );
 
-
---
--- Name: vv_events; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_events (
     id bigint NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2373,11 +1821,6 @@ CREATE TABLE public.vv_events (
     CONSTRAINT vv_events_record_type_check CHECK ((record_type = ANY (ARRAY['programme'::text, 'site'::text, 'trap'::text, 'council_taxon'::text, 'council_trap_type'::text, 'deployment'::text, 'visit'::text, 'sample'::text, 'result'::text, 'assessment'::text, 'action'::text, 'incursion'::text, 'notify_contact'::text])))
 );
 
-
---
--- Name: vv_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_events ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.vv_events_id_seq
     START WITH 1
@@ -2386,11 +1829,6 @@ ALTER TABLE public.vv_events ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     NO MAXVALUE
     CACHE 1
 );
-
-
---
--- Name: vv_exports; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_exports (
     id uuid NOT NULL,
@@ -2414,11 +1852,6 @@ CREATE TABLE public.vv_exports (
     CONSTRAINT vv_exports_size_bytes_check CHECK ((size_bytes > 0))
 );
 
-
---
--- Name: vv_external_refs; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_external_refs (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2440,11 +1873,6 @@ CREATE TABLE public.vv_external_refs (
     CONSTRAINT vv_external_refs_system_check CHECK (((char_length(system) >= 2) AND (char_length(system) <= 60)))
 );
 
-
---
--- Name: vv_incursion_findings; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_incursion_findings (
     incursion_id uuid NOT NULL,
     result_id uuid NOT NULL,
@@ -2453,11 +1881,6 @@ CREATE TABLE public.vv_incursion_findings (
     added_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-
---
--- Name: vv_incursion_sites; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_incursion_sites (
     incursion_id uuid NOT NULL,
     site_id uuid NOT NULL,
@@ -2465,11 +1888,6 @@ CREATE TABLE public.vv_incursion_sites (
     added_by uuid NOT NULL,
     added_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: vv_incursion_steps; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_incursion_steps (
     incursion_id uuid NOT NULL,
@@ -2486,11 +1904,6 @@ CREATE TABLE public.vv_incursion_steps (
     CONSTRAINT vv_incursion_steps_status_check CHECK ((status = ANY (ARRAY['to_do'::text, 'done'::text, 'skipped'::text]))),
     CONSTRAINT vv_incursion_steps_step_key_check CHECK ((step_key = ANY (ARRAY['notify'::text, 'confirm_id'::text, 'response_area'::text, 'enhanced_trapping'::text, 'control'::text, 'communications'::text, 'review'::text, 'stand_down'::text])))
 );
-
-
---
--- Name: vv_incursions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_incursions (
     id uuid NOT NULL,
@@ -2514,11 +1927,6 @@ CREATE TABLE public.vv_incursions (
     CONSTRAINT vv_incursions_title_check CHECK (((char_length(title) >= 3) AND (char_length(title) <= 200)))
 );
 
-
---
--- Name: vv_library_images; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_library_images (
     id uuid NOT NULL,
     version_id uuid NOT NULL,
@@ -2536,11 +1944,6 @@ CREATE TABLE public.vv_library_images (
     CONSTRAINT vv_library_images_source_url_check CHECK ((source_url ~ '^https://'::text))
 );
 
-
---
--- Name: vv_library_notes; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_library_notes (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2555,11 +1958,6 @@ CREATE TABLE public.vv_library_notes (
     CONSTRAINT vv_library_notes_kind_check CHECK ((kind = ANY (ARRAY['species'::text, 'trap'::text]))),
     CONSTRAINT vv_library_notes_note_check CHECK (((char_length(note) >= 2) AND (char_length(note) <= 4000)))
 );
-
-
---
--- Name: vv_library_versions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_library_versions (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -2585,11 +1983,6 @@ CREATE TABLE public.vv_library_versions (
     CONSTRAINT vv_library_versions_version_check CHECK ((version > 0))
 );
 
-
---
--- Name: vv_notifications; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_notifications (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2611,11 +2004,6 @@ CREATE TABLE public.vv_notifications (
     CONSTRAINT vv_notifications_reference_check CHECK ((char_length(reference) <= 120))
 );
 
-
---
--- Name: vv_notify_contacts; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_notify_contacts (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2632,21 +2020,11 @@ CREATE TABLE public.vv_notify_contacts (
     CONSTRAINT vv_notify_contacts_organisation_check CHECK ((char_length(organisation) <= 200))
 );
 
-
---
--- Name: vv_programme_teams; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_programme_teams (
     programme_id uuid NOT NULL,
     workspace_id uuid NOT NULL,
     team_id uuid NOT NULL
 );
-
-
---
--- Name: vv_programmes; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_programmes (
     id uuid NOT NULL,
@@ -2666,11 +2044,6 @@ CREATE TABLE public.vv_programmes (
     CONSTRAINT vv_programmes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'closed'::text]))),
     CONSTRAINT vv_programmes_vector_group_check CHECK ((vector_group = 'mosquito'::text))
 );
-
-
---
--- Name: vv_result_versions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_result_versions (
     result_id uuid NOT NULL,
@@ -2706,11 +2079,6 @@ CREATE TABLE public.vv_result_versions (
     CONSTRAINT vv_result_versions_version_check CHECK ((version > 0))
 );
 
-
---
--- Name: vv_results; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_results (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2720,11 +2088,6 @@ CREATE TABLE public.vv_results (
     created_by uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: vv_samples; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_samples (
     id uuid NOT NULL,
@@ -2743,21 +2106,11 @@ CREATE TABLE public.vv_samples (
     CONSTRAINT vv_samples_status_check CHECK ((status = ANY (ARRAY['awaiting_result'::text, 'resulted'::text])))
 );
 
-
---
--- Name: vv_site_programmes; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_site_programmes (
     site_id uuid NOT NULL,
     programme_id uuid NOT NULL,
     workspace_id uuid NOT NULL
 );
-
-
---
--- Name: vv_sites; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_sites (
     id uuid NOT NULL,
@@ -2793,11 +2146,6 @@ CREATE TABLE public.vv_sites (
     CONSTRAINT vv_sites_uprn_check CHECK ((uprn ~ '^[0-9]{1,12}$'::text))
 );
 
-
---
--- Name: vv_stand_downs; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_stand_downs (
     id uuid NOT NULL,
     workspace_id uuid NOT NULL,
@@ -2811,11 +2159,6 @@ CREATE TABLE public.vv_stand_downs (
     CONSTRAINT vv_stand_downs_kind_check CHECK ((kind = ANY (ARRAY['stand_down'::text, 'reopen'::text]))),
     CONSTRAINT vv_stand_downs_rationale_check CHECK (((char_length(rationale) >= 10) AND (char_length(rationale) <= 4000)))
 );
-
-
---
--- Name: vv_taxa; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_taxa (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -2832,11 +2175,6 @@ CREATE TABLE public.vv_taxa (
     CONSTRAINT vv_taxa_vector_group_check CHECK ((vector_group = 'mosquito'::text))
 );
 
-
---
--- Name: vv_trap_types; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_trap_types (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     key text NOT NULL,
@@ -2850,11 +2188,6 @@ CREATE TABLE public.vv_trap_types (
     CONSTRAINT vv_trap_types_name_check CHECK (((char_length(name) >= 3) AND (char_length(name) <= 120))),
     CONSTRAINT vv_trap_types_vector_group_check CHECK ((vector_group = 'mosquito'::text))
 );
-
-
---
--- Name: vv_traps; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_traps (
     id uuid NOT NULL,
@@ -2873,11 +2206,6 @@ CREATE TABLE public.vv_traps (
     CONSTRAINT vv_traps_notes_check CHECK ((char_length(notes) <= 2000)),
     CONSTRAINT vv_traps_status_check CHECK ((status = ANY (ARRAY['available'::text, 'deployed'::text, 'damaged'::text, 'retired'::text])))
 );
-
-
---
--- Name: vv_visits; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vv_visits (
     id uuid NOT NULL,
@@ -2904,11 +2232,6 @@ CREATE TABLE public.vv_visits (
     CONSTRAINT vv_visits_trap_condition_check CHECK ((trap_condition = ANY (ARRAY['working'::text, 'not_working'::text, 'damaged'::text, 'missing'::text])))
 );
 
-
---
--- Name: vv_workspace_settings; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.vv_workspace_settings (
     workspace_id uuid NOT NULL,
     site_prefix text DEFAULT 'VS'::text NOT NULL,
@@ -2920,11 +2243,6 @@ CREATE TABLE public.vv_workspace_settings (
     CONSTRAINT vv_workspace_settings_next_site_no_check CHECK ((next_site_no > 0)),
     CONSTRAINT vv_workspace_settings_site_prefix_check CHECK ((site_prefix ~ '^[A-Z0-9]{1,8}$'::text))
 );
-
-
---
--- Name: workspace_invitations; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.workspace_invitations (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -2941,22 +2259,12 @@ CREATE TABLE public.workspace_invitations (
     CONSTRAINT workspace_invitations_role_check CHECK ((role <> 'owner'::public.workspace_role))
 );
 
-
---
--- Name: workspace_members; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.workspace_members (
     workspace_id uuid NOT NULL,
     user_id uuid NOT NULL,
     role public.workspace_role NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: workspace_product_events; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.workspace_product_events (
     id bigint NOT NULL,
@@ -2967,11 +2275,6 @@ CREATE TABLE public.workspace_product_events (
     recorded_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-
---
--- Name: workspace_product_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 ALTER TABLE public.workspace_product_events ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.workspace_product_events_id_seq
     START WITH 1
@@ -2981,11 +2284,6 @@ ALTER TABLE public.workspace_product_events ALTER COLUMN id ADD GENERATED ALWAYS
     CACHE 1
 );
 
-
---
--- Name: workspace_products; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.workspace_products (
     workspace_id uuid NOT NULL,
     product text NOT NULL,
@@ -2994,11 +2292,6 @@ CREATE TABLE public.workspace_products (
     updated_by uuid,
     CONSTRAINT workspace_products_product_check CHECK ((product = ANY (ARRAY['investigations'::text, 'vectovia'::text])))
 );
-
-
---
--- Name: workspaces; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.workspaces (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -3011,1974 +2304,687 @@ CREATE TABLE public.workspaces (
     CONSTRAINT workspaces_name_check CHECK (((char_length(name) >= 1) AND (char_length(name) <= 120)))
 );
 
-
---
--- Name: audit_events audit_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.audit_events
     ADD CONSTRAINT audit_events_pkey PRIMARY KEY (id);
-
-
---
--- Name: content_roles content_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.content_roles
     ADD CONSTRAINT content_roles_pkey PRIMARY KEY (user_id, role);
 
-
---
--- Name: invitation_emails invitation_emails_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.invitation_emails
     ADD CONSTRAINT invitation_emails_pkey PRIMARY KEY (id);
-
-
---
--- Name: platform_admins platform_admins_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.platform_admins
     ADD CONSTRAINT platform_admins_pkey PRIMARY KEY (user_id);
 
-
---
--- Name: product_access product_access_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.product_access
     ADD CONSTRAINT product_access_pkey PRIMARY KEY (workspace_id, user_id, product);
-
-
---
--- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
 
-
---
--- Name: team_members team_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.team_members
     ADD CONSTRAINT team_members_pkey PRIMARY KEY (team_id, user_id);
-
-
---
--- Name: teams teams_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.teams
     ADD CONSTRAINT teams_id_workspace_id_key UNIQUE (id, workspace_id);
 
-
---
--- Name: teams teams_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.teams
     ADD CONSTRAINT teams_pkey PRIMARY KEY (id);
-
-
---
--- Name: teams teams_workspace_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.teams
     ADD CONSTRAINT teams_workspace_id_name_key UNIQUE (workspace_id, name);
 
-
---
--- Name: vv_actions vv_actions_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_actions
     ADD CONSTRAINT vv_actions_id_workspace_id_key UNIQUE (id, workspace_id);
-
-
---
--- Name: vv_actions vv_actions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_actions
     ADD CONSTRAINT vv_actions_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_assessment_results vv_assessment_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_assessment_results
     ADD CONSTRAINT vv_assessment_results_pkey PRIMARY KEY (assessment_id, result_id);
-
-
---
--- Name: vv_assessment_versions vv_assessment_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_assessment_versions
     ADD CONSTRAINT vv_assessment_versions_pkey PRIMARY KEY (assessment_id, version);
 
-
---
--- Name: vv_assessments vv_assessments_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_assessments
     ADD CONSTRAINT vv_assessments_id_workspace_id_key UNIQUE (id, workspace_id);
-
-
---
--- Name: vv_assessments vv_assessments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_assessments
     ADD CONSTRAINT vv_assessments_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_attachment_events vv_attachment_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_attachment_events
     ADD CONSTRAINT vv_attachment_events_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_attachments vv_attachments_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_attachments
     ADD CONSTRAINT vv_attachments_id_workspace_id_key UNIQUE (id, workspace_id);
 
-
---
--- Name: vv_attachments vv_attachments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_attachments
     ADD CONSTRAINT vv_attachments_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_attachments vv_attachments_storage_path_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_attachments
     ADD CONSTRAINT vv_attachments_storage_path_key UNIQUE (storage_path);
 
-
---
--- Name: vv_council_taxa vv_council_taxa_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_council_taxa
     ADD CONSTRAINT vv_council_taxa_id_workspace_id_key UNIQUE (id, workspace_id);
-
-
---
--- Name: vv_council_taxa vv_council_taxa_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_council_taxa
     ADD CONSTRAINT vv_council_taxa_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_council_trap_types vv_council_trap_types_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_council_trap_types
     ADD CONSTRAINT vv_council_trap_types_id_workspace_id_key UNIQUE (id, workspace_id);
-
-
---
--- Name: vv_council_trap_types vv_council_trap_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_council_trap_types
     ADD CONSTRAINT vv_council_trap_types_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_deployments vv_deployments_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_deployments
     ADD CONSTRAINT vv_deployments_id_workspace_id_key UNIQUE (id, workspace_id);
-
-
---
--- Name: vv_deployments vv_deployments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_deployments
     ADD CONSTRAINT vv_deployments_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_events vv_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_events
     ADD CONSTRAINT vv_events_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_exports vv_exports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_exports
     ADD CONSTRAINT vv_exports_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_external_refs vv_external_refs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_external_refs
     ADD CONSTRAINT vv_external_refs_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_incursion_findings vv_incursion_findings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_incursion_findings
     ADD CONSTRAINT vv_incursion_findings_pkey PRIMARY KEY (incursion_id, result_id);
 
-
---
--- Name: vv_incursion_sites vv_incursion_sites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_incursion_sites
     ADD CONSTRAINT vv_incursion_sites_pkey PRIMARY KEY (incursion_id, site_id);
-
-
---
--- Name: vv_incursion_steps vv_incursion_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_incursion_steps
     ADD CONSTRAINT vv_incursion_steps_pkey PRIMARY KEY (incursion_id, step_key);
 
-
---
--- Name: vv_incursions vv_incursions_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_incursions
     ADD CONSTRAINT vv_incursions_id_workspace_id_key UNIQUE (id, workspace_id);
-
-
---
--- Name: vv_incursions vv_incursions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_incursions
     ADD CONSTRAINT vv_incursions_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_incursions vv_incursions_workspace_id_reference_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_incursions
     ADD CONSTRAINT vv_incursions_workspace_id_reference_key UNIQUE (workspace_id, reference);
-
-
---
--- Name: vv_library_images vv_library_images_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_library_images
     ADD CONSTRAINT vv_library_images_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_library_images vv_library_images_storage_path_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_library_images
     ADD CONSTRAINT vv_library_images_storage_path_key UNIQUE (storage_path);
-
-
---
--- Name: vv_library_notes vv_library_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_library_notes
     ADD CONSTRAINT vv_library_notes_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_library_versions vv_library_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_library_versions
     ADD CONSTRAINT vv_library_versions_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_library_versions vv_library_versions_taxon_id_version_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_library_versions
     ADD CONSTRAINT vv_library_versions_taxon_id_version_key UNIQUE (taxon_id, version);
 
-
---
--- Name: vv_library_versions vv_library_versions_trap_type_id_version_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_library_versions
     ADD CONSTRAINT vv_library_versions_trap_type_id_version_key UNIQUE (trap_type_id, version);
-
-
---
--- Name: vv_notifications vv_notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_notifications
     ADD CONSTRAINT vv_notifications_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_notify_contacts vv_notify_contacts_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_notify_contacts
     ADD CONSTRAINT vv_notify_contacts_id_workspace_id_key UNIQUE (id, workspace_id);
-
-
---
--- Name: vv_notify_contacts vv_notify_contacts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_notify_contacts
     ADD CONSTRAINT vv_notify_contacts_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_programme_teams vv_programme_teams_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_programme_teams
     ADD CONSTRAINT vv_programme_teams_pkey PRIMARY KEY (programme_id, team_id);
-
-
---
--- Name: vv_programmes vv_programmes_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_programmes
     ADD CONSTRAINT vv_programmes_id_workspace_id_key UNIQUE (id, workspace_id);
 
-
---
--- Name: vv_programmes vv_programmes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_programmes
     ADD CONSTRAINT vv_programmes_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_programmes vv_programmes_workspace_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_programmes
     ADD CONSTRAINT vv_programmes_workspace_id_name_key UNIQUE (workspace_id, name);
 
-
---
--- Name: vv_result_versions vv_result_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_result_versions
     ADD CONSTRAINT vv_result_versions_pkey PRIMARY KEY (result_id, version);
-
-
---
--- Name: vv_results vv_results_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_results
     ADD CONSTRAINT vv_results_id_workspace_id_key UNIQUE (id, workspace_id);
 
-
---
--- Name: vv_results vv_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_results
     ADD CONSTRAINT vv_results_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_samples vv_samples_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_samples
     ADD CONSTRAINT vv_samples_id_workspace_id_key UNIQUE (id, workspace_id);
 
-
---
--- Name: vv_samples vv_samples_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_samples
     ADD CONSTRAINT vv_samples_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_samples vv_samples_workspace_id_reference_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_samples
     ADD CONSTRAINT vv_samples_workspace_id_reference_key UNIQUE (workspace_id, reference);
 
-
---
--- Name: vv_site_programmes vv_site_programmes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_site_programmes
     ADD CONSTRAINT vv_site_programmes_pkey PRIMARY KEY (site_id, programme_id);
-
-
---
--- Name: vv_sites vv_sites_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_sites
     ADD CONSTRAINT vv_sites_id_workspace_id_key UNIQUE (id, workspace_id);
 
-
---
--- Name: vv_sites vv_sites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_sites
     ADD CONSTRAINT vv_sites_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_sites vv_sites_workspace_id_reference_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_sites
     ADD CONSTRAINT vv_sites_workspace_id_reference_key UNIQUE (workspace_id, reference);
 
-
---
--- Name: vv_stand_downs vv_stand_downs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_stand_downs
     ADD CONSTRAINT vv_stand_downs_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_taxa vv_taxa_key_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_taxa
     ADD CONSTRAINT vv_taxa_key_key UNIQUE (key);
 
-
---
--- Name: vv_taxa vv_taxa_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_taxa
     ADD CONSTRAINT vv_taxa_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_trap_types vv_trap_types_key_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_trap_types
     ADD CONSTRAINT vv_trap_types_key_key UNIQUE (key);
 
-
---
--- Name: vv_trap_types vv_trap_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_trap_types
     ADD CONSTRAINT vv_trap_types_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_traps vv_traps_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_traps
     ADD CONSTRAINT vv_traps_id_workspace_id_key UNIQUE (id, workspace_id);
 
-
---
--- Name: vv_traps vv_traps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_traps
     ADD CONSTRAINT vv_traps_pkey PRIMARY KEY (id);
-
-
---
--- Name: vv_traps vv_traps_workspace_id_identifier_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_traps
     ADD CONSTRAINT vv_traps_workspace_id_identifier_key UNIQUE (workspace_id, identifier);
 
-
---
--- Name: vv_visits vv_visits_id_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_visits
     ADD CONSTRAINT vv_visits_id_workspace_id_key UNIQUE (id, workspace_id);
-
-
---
--- Name: vv_visits vv_visits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_visits
     ADD CONSTRAINT vv_visits_pkey PRIMARY KEY (id);
 
-
---
--- Name: vv_workspace_settings vv_workspace_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_workspace_settings
     ADD CONSTRAINT vv_workspace_settings_pkey PRIMARY KEY (workspace_id);
-
-
---
--- Name: workspace_invitations workspace_invitations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.workspace_invitations
     ADD CONSTRAINT workspace_invitations_pkey PRIMARY KEY (id);
 
-
---
--- Name: workspace_invitations workspace_invitations_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.workspace_invitations
     ADD CONSTRAINT workspace_invitations_token_hash_key UNIQUE (token_hash);
-
-
---
--- Name: workspace_members workspace_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.workspace_members
     ADD CONSTRAINT workspace_members_pkey PRIMARY KEY (workspace_id, user_id);
 
-
---
--- Name: workspace_product_events workspace_product_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.workspace_product_events
     ADD CONSTRAINT workspace_product_events_pkey PRIMARY KEY (id);
-
-
---
--- Name: workspace_products workspace_products_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.workspace_products
     ADD CONSTRAINT workspace_products_pkey PRIMARY KEY (workspace_id, product);
 
-
---
--- Name: workspaces workspaces_personal_owner_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.workspaces
     ADD CONSTRAINT workspaces_personal_owner_id_key UNIQUE (personal_owner_id);
-
-
---
--- Name: workspaces workspaces_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.workspaces
     ADD CONSTRAINT workspaces_pkey PRIMARY KEY (id);
 
-
---
--- Name: invitation_emails_inv_idx; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX invitation_emails_inv_idx ON public.invitation_emails USING btree (invitation_id, created_at);
-
-
---
--- Name: invitation_emails_ws_idx; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX invitation_emails_ws_idx ON public.invitation_emails USING btree (workspace_id, created_at);
 
-
---
--- Name: team_members_user_idx; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX team_members_user_idx ON public.team_members USING btree (user_id);
-
-
---
--- Name: vv_actions_owner_idx; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX vv_actions_owner_idx ON public.vv_actions USING btree (workspace_id, owner_id, status);
 
-
---
--- Name: vv_attachment_events_idx; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX vv_attachment_events_idx ON public.vv_attachment_events USING btree (attachment_id, recorded_at);
-
-
---
--- Name: vv_attachments_record_idx; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX vv_attachments_record_idx ON public.vv_attachments USING btree (record_type, record_id);
 
-
---
--- Name: vv_deployments_one_active; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX vv_deployments_one_active ON public.vv_deployments USING btree (trap_id) WHERE (ended_at IS NULL);
-
-
---
--- Name: vv_deployments_site_idx; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX vv_deployments_site_idx ON public.vv_deployments USING btree (site_id, started_at DESC);
 
-
---
--- Name: vv_events_record_idx; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX vv_events_record_idx ON public.vv_events USING btree (record_type, record_id, recorded_at);
-
-
---
--- Name: vv_exports_ws_idx; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX vv_exports_ws_idx ON public.vv_exports USING btree (workspace_id, created_at DESC);
 
-
---
--- Name: vv_external_refs_active; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX vv_external_refs_active ON public.vv_external_refs USING btree (workspace_id, record_type, lower(system), external_id) WHERE (removed_at IS NULL);
-
-
---
--- Name: vv_library_one_published_species; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE UNIQUE INDEX vv_library_one_published_species ON public.vv_library_versions USING btree (taxon_id) WHERE (status = 'published'::public.kp_status);
 
-
---
--- Name: vv_library_one_published_trap; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX vv_library_one_published_trap ON public.vv_library_versions USING btree (trap_type_id) WHERE (status = 'published'::public.kp_status);
-
-
---
--- Name: vv_results_sample_idx; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX vv_results_sample_idx ON public.vv_results USING btree (sample_id);
 
-
---
--- Name: vv_samples_visit_idx; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX vv_samples_visit_idx ON public.vv_samples USING btree (visit_id);
-
-
---
--- Name: vv_visits_deployment_idx; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX vv_visits_deployment_idx ON public.vv_visits USING btree (deployment_id, occurred_at DESC);
 
-
---
--- Name: workspace_members_user_idx; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX workspace_members_user_idx ON public.workspace_members USING btree (user_id);
-
-
---
--- Name: audit_events audit_append_only; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER audit_append_only BEFORE DELETE OR UPDATE ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: invitation_emails invitation_emails_append_only; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER invitation_emails_append_only BEFORE UPDATE ON public.invitation_emails FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: workspace_members members_guard; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER members_guard BEFORE INSERT OR DELETE OR UPDATE ON public.workspace_members FOR EACH ROW EXECUTE FUNCTION public.guard_membership();
 
-
---
--- Name: profiles profiles_touch; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER profiles_touch BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
-
-
---
--- Name: vv_actions vv_actions_immutable; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_actions_immutable BEFORE UPDATE ON public.vv_actions FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'site_id', 'assessment_id', 'incursion_id', 'step_key', 'created_by', 'created_at');
 
-
---
--- Name: vv_actions vv_actions_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_actions_no_delete BEFORE DELETE ON public.vv_actions FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_assessment_results vv_assessment_results_append_only; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_assessment_results_append_only BEFORE DELETE OR UPDATE ON public.vv_assessment_results FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_assessment_versions vv_assessment_versions_append_only; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_assessment_versions_append_only BEFORE DELETE OR UPDATE ON public.vv_assessment_versions FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_assessments vv_assessments_immutable; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_assessments_immutable BEFORE UPDATE ON public.vv_assessments FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'site_id', 'created_by', 'created_at');
 
-
---
--- Name: vv_assessments vv_assessments_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_assessments_no_delete BEFORE DELETE ON public.vv_assessments FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_attachment_events vv_attachment_events_append_only; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_attachment_events_append_only BEFORE DELETE OR UPDATE ON public.vv_attachment_events FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_attachments vv_attachments_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_attachments_immutable BEFORE UPDATE ON public.vv_attachments FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'record_type', 'record_id', 'site_id', 'kind', 'file_name', 'mime_type', 'size_bytes', 'sha256_reported', 'storage_path', 'derived_from', 'uploaded_by', 'uploaded_role', 'received_at');
-
-
---
--- Name: vv_attachments vv_attachments_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_attachments_no_delete BEFORE DELETE ON public.vv_attachments FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_deployments vv_deployments_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_deployments_immutable BEFORE UPDATE ON public.vv_deployments FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'trap_id', 'site_id', 'started_at', 'created_by', 'recorded_at');
-
-
---
--- Name: vv_deployments vv_deployments_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_deployments_no_delete BEFORE DELETE ON public.vv_deployments FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_events vv_events_append_only; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_events_append_only BEFORE DELETE OR UPDATE ON public.vv_events FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_exports vv_exports_append_only; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_exports_append_only BEFORE DELETE OR UPDATE ON public.vv_exports FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_external_refs vv_external_refs_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_external_refs_immutable BEFORE UPDATE ON public.vv_external_refs FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'record_type', 'record_id', 'system', 'external_id', 'note', 'created_by', 'created_at');
-
-
---
--- Name: vv_external_refs vv_external_refs_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_external_refs_no_delete BEFORE DELETE ON public.vv_external_refs FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_incursion_findings vv_incursion_findings_append_only; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_incursion_findings_append_only BEFORE DELETE OR UPDATE ON public.vv_incursion_findings FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_incursion_sites vv_incursion_sites_append_only; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_incursion_sites_append_only BEFORE DELETE OR UPDATE ON public.vv_incursion_sites FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_incursion_steps vv_incursion_steps_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_incursion_steps_immutable BEFORE UPDATE ON public.vv_incursion_steps FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('incursion_id', 'workspace_id', 'step_key', 'sort_order');
-
-
---
--- Name: vv_incursion_steps vv_incursion_steps_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_incursion_steps_no_delete BEFORE DELETE ON public.vv_incursion_steps FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_incursions vv_incursions_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_incursions_immutable BEFORE UPDATE ON public.vv_incursions FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'reference', 'site_id', 'opened_at', 'created_by', 'created_at');
-
-
---
--- Name: vv_incursions vv_incursions_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_incursions_no_delete BEFORE DELETE ON public.vv_incursions FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_library_images vv_library_images_no_change; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_library_images_no_change BEFORE DELETE OR UPDATE ON public.vv_library_images FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_library_versions vv_library_versions_guard; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_library_versions_guard BEFORE UPDATE ON public.vv_library_versions FOR EACH ROW EXECUTE FUNCTION public.kp_guard_version();
 
-
---
--- Name: vv_library_versions vv_library_versions_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_library_versions_no_delete BEFORE DELETE ON public.vv_library_versions FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_notifications vv_notifications_append_only; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_notifications_append_only BEFORE DELETE OR UPDATE ON public.vv_notifications FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_notify_contacts vv_notify_contacts_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_notify_contacts_immutable BEFORE UPDATE ON public.vv_notify_contacts FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'created_by', 'created_at');
-
-
---
--- Name: vv_notify_contacts vv_notify_contacts_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_notify_contacts_no_delete BEFORE DELETE ON public.vv_notify_contacts FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_programmes vv_programmes_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_programmes_immutable BEFORE UPDATE ON public.vv_programmes FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'created_by', 'created_at');
-
-
---
--- Name: vv_programmes vv_programmes_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_programmes_no_delete BEFORE DELETE ON public.vv_programmes FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_result_versions vv_result_versions_append_only; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_result_versions_append_only BEFORE DELETE OR UPDATE ON public.vv_result_versions FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_results vv_results_immutable; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_results_immutable BEFORE UPDATE ON public.vv_results FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'sample_id', 'site_id', 'created_by', 'created_at');
 
-
---
--- Name: vv_results vv_results_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_results_no_delete BEFORE DELETE ON public.vv_results FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_samples vv_samples_immutable; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_samples_immutable BEFORE UPDATE ON public.vv_samples FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'visit_id', 'site_id', 'reference', 'created_by', 'recorded_at');
 
-
---
--- Name: vv_samples vv_samples_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_samples_no_delete BEFORE DELETE ON public.vv_samples FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_sites vv_sites_immutable; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_sites_immutable BEFORE UPDATE ON public.vv_sites FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'reference', 'created_by', 'created_at');
 
-
---
--- Name: vv_sites vv_sites_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_sites_no_delete BEFORE DELETE ON public.vv_sites FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
-
-
---
--- Name: vv_stand_downs vv_stand_downs_append_only; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_stand_downs_append_only BEFORE DELETE OR UPDATE ON public.vv_stand_downs FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_traps vv_traps_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_traps_immutable BEFORE UPDATE ON public.vv_traps FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'created_by', 'created_at');
-
-
---
--- Name: vv_traps vv_traps_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_traps_no_delete BEFORE DELETE ON public.vv_traps FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: vv_visits vv_visits_immutable; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vv_visits_immutable BEFORE UPDATE ON public.vv_visits FOR EACH ROW EXECUTE FUNCTION public.guard_immutable('id', 'workspace_id', 'deployment_id', 'site_id', 'outcome', 'created_by', 'recorded_at');
-
-
---
--- Name: vv_visits vv_visits_no_delete; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER vv_visits_no_delete BEFORE DELETE ON public.vv_visits FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: workspace_product_events workspace_product_events_append_only; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER workspace_product_events_append_only BEFORE DELETE OR UPDATE ON public.workspace_product_events FOR EACH ROW EXECUTE FUNCTION public.forbid_update();
 
-
---
--- Name: workspaces workspaces_default_products; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER workspaces_default_products AFTER INSERT ON public.workspaces FOR EACH ROW EXECUTE FUNCTION public.default_workspace_products();
-
-
---
--- Name: content_roles content_roles_granted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.content_roles
     ADD CONSTRAINT content_roles_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-
---
--- Name: content_roles content_roles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.content_roles
     ADD CONSTRAINT content_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
-
-
---
--- Name: invitation_emails invitation_emails_invitation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.invitation_emails
     ADD CONSTRAINT invitation_emails_invitation_id_fkey FOREIGN KEY (invitation_id) REFERENCES public.workspace_invitations(id) ON DELETE CASCADE;
 
-
---
--- Name: invitation_emails invitation_emails_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.invitation_emails
     ADD CONSTRAINT invitation_emails_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE;
-
-
---
--- Name: platform_admins platform_admins_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.platform_admins
     ADD CONSTRAINT platform_admins_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-
---
--- Name: product_access product_access_workspace_id_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.product_access
     ADD CONSTRAINT product_access_workspace_id_user_id_fkey FOREIGN KEY (workspace_id, user_id) REFERENCES public.workspace_members(workspace_id, user_id) ON DELETE CASCADE;
-
-
---
--- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-
---
--- Name: team_members team_members_team_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.team_members
     ADD CONSTRAINT team_members_team_id_workspace_id_fkey FOREIGN KEY (team_id, workspace_id) REFERENCES public.teams(id, workspace_id) ON DELETE CASCADE;
-
-
---
--- Name: team_members team_members_workspace_id_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.team_members
     ADD CONSTRAINT team_members_workspace_id_user_id_fkey FOREIGN KEY (workspace_id, user_id) REFERENCES public.workspace_members(workspace_id, user_id) ON DELETE CASCADE;
 
-
---
--- Name: teams teams_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.teams
     ADD CONSTRAINT teams_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_actions vv_actions_assessment_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_actions
     ADD CONSTRAINT vv_actions_assessment_id_workspace_id_fkey FOREIGN KEY (assessment_id, workspace_id) REFERENCES public.vv_assessments(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_actions vv_actions_incursion_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_actions
     ADD CONSTRAINT vv_actions_incursion_fk FOREIGN KEY (incursion_id, workspace_id) REFERENCES public.vv_incursions(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_actions vv_actions_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_actions
     ADD CONSTRAINT vv_actions_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_actions vv_actions_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_actions
     ADD CONSTRAINT vv_actions_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_actions vv_actions_workspace_id_owner_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_actions
     ADD CONSTRAINT vv_actions_workspace_id_owner_id_fkey FOREIGN KEY (workspace_id, owner_id) REFERENCES public.workspace_members(workspace_id, user_id) ON DELETE SET NULL (owner_id);
 
-
---
--- Name: vv_assessment_results vv_assessment_results_assessment_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_assessment_results
     ADD CONSTRAINT vv_assessment_results_assessment_id_workspace_id_fkey FOREIGN KEY (assessment_id, workspace_id) REFERENCES public.vv_assessments(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_assessment_results vv_assessment_results_result_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_assessment_results
     ADD CONSTRAINT vv_assessment_results_result_id_workspace_id_fkey FOREIGN KEY (result_id, workspace_id) REFERENCES public.vv_results(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_assessment_versions vv_assessment_versions_assessment_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_assessment_versions
     ADD CONSTRAINT vv_assessment_versions_assessment_id_workspace_id_fkey FOREIGN KEY (assessment_id, workspace_id) REFERENCES public.vv_assessments(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_assessments vv_assessments_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_assessments
     ADD CONSTRAINT vv_assessments_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_assessments vv_assessments_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_assessments
     ADD CONSTRAINT vv_assessments_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_attachment_events vv_attachment_events_attachment_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_attachment_events
     ADD CONSTRAINT vv_attachment_events_attachment_id_workspace_id_fkey FOREIGN KEY (attachment_id, workspace_id) REFERENCES public.vv_attachments(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_attachments vv_attachments_derived_from_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_attachments
     ADD CONSTRAINT vv_attachments_derived_from_fkey FOREIGN KEY (derived_from) REFERENCES public.vv_attachments(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_attachments vv_attachments_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_attachments
     ADD CONSTRAINT vv_attachments_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_attachments vv_attachments_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_attachments
     ADD CONSTRAINT vv_attachments_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_council_taxa vv_council_taxa_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_council_taxa
     ADD CONSTRAINT vv_council_taxa_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_council_trap_types vv_council_trap_types_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_council_trap_types
     ADD CONSTRAINT vv_council_trap_types_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_deployments vv_deployments_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_deployments
     ADD CONSTRAINT vv_deployments_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_deployments vv_deployments_trap_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_deployments
     ADD CONSTRAINT vv_deployments_trap_id_workspace_id_fkey FOREIGN KEY (trap_id, workspace_id) REFERENCES public.vv_traps(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_deployments vv_deployments_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_deployments
     ADD CONSTRAINT vv_deployments_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_deployments vv_deployments_workspace_id_responsible_officer_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_deployments
     ADD CONSTRAINT vv_deployments_workspace_id_responsible_officer_fkey FOREIGN KEY (workspace_id, responsible_officer) REFERENCES public.workspace_members(workspace_id, user_id) ON DELETE SET NULL (responsible_officer);
-
-
---
--- Name: vv_events vv_events_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_events
     ADD CONSTRAINT vv_events_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_exports vv_exports_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_exports
     ADD CONSTRAINT vv_exports_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_external_refs vv_external_refs_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_external_refs
     ADD CONSTRAINT vv_external_refs_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_incursion_findings vv_incursion_findings_incursion_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_incursion_findings
     ADD CONSTRAINT vv_incursion_findings_incursion_id_workspace_id_fkey FOREIGN KEY (incursion_id, workspace_id) REFERENCES public.vv_incursions(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_incursion_findings vv_incursion_findings_result_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_incursion_findings
     ADD CONSTRAINT vv_incursion_findings_result_id_workspace_id_fkey FOREIGN KEY (result_id, workspace_id) REFERENCES public.vv_results(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_incursion_sites vv_incursion_sites_incursion_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_incursion_sites
     ADD CONSTRAINT vv_incursion_sites_incursion_id_workspace_id_fkey FOREIGN KEY (incursion_id, workspace_id) REFERENCES public.vv_incursions(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_incursion_sites vv_incursion_sites_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_incursion_sites
     ADD CONSTRAINT vv_incursion_sites_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_incursion_steps vv_incursion_steps_incursion_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_incursion_steps
     ADD CONSTRAINT vv_incursion_steps_incursion_id_workspace_id_fkey FOREIGN KEY (incursion_id, workspace_id) REFERENCES public.vv_incursions(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_incursions vv_incursions_council_taxon_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_incursions
     ADD CONSTRAINT vv_incursions_council_taxon_id_workspace_id_fkey FOREIGN KEY (council_taxon_id, workspace_id) REFERENCES public.vv_council_taxa(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_incursions vv_incursions_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_incursions
     ADD CONSTRAINT vv_incursions_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_incursions vv_incursions_taxon_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_incursions
     ADD CONSTRAINT vv_incursions_taxon_id_fkey FOREIGN KEY (taxon_id) REFERENCES public.vv_taxa(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_incursions vv_incursions_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_incursions
     ADD CONSTRAINT vv_incursions_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_incursions vv_incursions_workspace_id_lead_officer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_incursions
     ADD CONSTRAINT vv_incursions_workspace_id_lead_officer_id_fkey FOREIGN KEY (workspace_id, lead_officer_id) REFERENCES public.workspace_members(workspace_id, user_id) ON DELETE SET NULL (lead_officer_id);
 
-
---
--- Name: vv_library_images vv_library_images_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_library_images
     ADD CONSTRAINT vv_library_images_version_id_fkey FOREIGN KEY (version_id) REFERENCES public.vv_library_versions(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_library_notes vv_library_notes_taxon_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_library_notes
     ADD CONSTRAINT vv_library_notes_taxon_id_fkey FOREIGN KEY (taxon_id) REFERENCES public.vv_taxa(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_library_notes vv_library_notes_trap_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_library_notes
     ADD CONSTRAINT vv_library_notes_trap_type_id_fkey FOREIGN KEY (trap_type_id) REFERENCES public.vv_trap_types(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_library_notes vv_library_notes_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_library_notes
     ADD CONSTRAINT vv_library_notes_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_library_versions vv_library_versions_taxon_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_library_versions
     ADD CONSTRAINT vv_library_versions_taxon_id_fkey FOREIGN KEY (taxon_id) REFERENCES public.vv_taxa(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_library_versions vv_library_versions_trap_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_library_versions
     ADD CONSTRAINT vv_library_versions_trap_type_id_fkey FOREIGN KEY (trap_type_id) REFERENCES public.vv_trap_types(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_notifications vv_notifications_contact_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_notifications
     ADD CONSTRAINT vv_notifications_contact_id_workspace_id_fkey FOREIGN KEY (contact_id, workspace_id) REFERENCES public.vv_notify_contacts(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_notifications vv_notifications_incursion_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_notifications
     ADD CONSTRAINT vv_notifications_incursion_id_workspace_id_fkey FOREIGN KEY (incursion_id, workspace_id) REFERENCES public.vv_incursions(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_notify_contacts vv_notify_contacts_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_notify_contacts
     ADD CONSTRAINT vv_notify_contacts_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_programme_teams vv_programme_teams_programme_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_programme_teams
     ADD CONSTRAINT vv_programme_teams_programme_id_workspace_id_fkey FOREIGN KEY (programme_id, workspace_id) REFERENCES public.vv_programmes(id, workspace_id) ON DELETE CASCADE;
 
-
---
--- Name: vv_programme_teams vv_programme_teams_team_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_programme_teams
     ADD CONSTRAINT vv_programme_teams_team_id_workspace_id_fkey FOREIGN KEY (team_id, workspace_id) REFERENCES public.teams(id, workspace_id) ON DELETE CASCADE;
-
-
---
--- Name: vv_programmes vv_programmes_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_programmes
     ADD CONSTRAINT vv_programmes_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_result_versions vv_result_versions_council_taxon_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_result_versions
     ADD CONSTRAINT vv_result_versions_council_taxon_id_workspace_id_fkey FOREIGN KEY (council_taxon_id, workspace_id) REFERENCES public.vv_council_taxa(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_result_versions vv_result_versions_result_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_result_versions
     ADD CONSTRAINT vv_result_versions_result_id_workspace_id_fkey FOREIGN KEY (result_id, workspace_id) REFERENCES public.vv_results(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_result_versions vv_result_versions_taxon_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_result_versions
     ADD CONSTRAINT vv_result_versions_taxon_id_fkey FOREIGN KEY (taxon_id) REFERENCES public.vv_taxa(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_results vv_results_sample_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_results
     ADD CONSTRAINT vv_results_sample_id_workspace_id_fkey FOREIGN KEY (sample_id, workspace_id) REFERENCES public.vv_samples(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_results vv_results_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_results
     ADD CONSTRAINT vv_results_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_results vv_results_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_results
     ADD CONSTRAINT vv_results_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_samples vv_samples_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_samples
     ADD CONSTRAINT vv_samples_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_samples vv_samples_visit_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_samples
     ADD CONSTRAINT vv_samples_visit_id_workspace_id_fkey FOREIGN KEY (visit_id, workspace_id) REFERENCES public.vv_visits(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_samples vv_samples_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_samples
     ADD CONSTRAINT vv_samples_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_site_programmes vv_site_programmes_programme_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_site_programmes
     ADD CONSTRAINT vv_site_programmes_programme_id_workspace_id_fkey FOREIGN KEY (programme_id, workspace_id) REFERENCES public.vv_programmes(id, workspace_id) ON DELETE CASCADE;
 
-
---
--- Name: vv_site_programmes vv_site_programmes_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_site_programmes
     ADD CONSTRAINT vv_site_programmes_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE CASCADE;
-
-
---
--- Name: vv_sites vv_sites_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_sites
     ADD CONSTRAINT vv_sites_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_stand_downs vv_stand_downs_incursion_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_stand_downs
     ADD CONSTRAINT vv_stand_downs_incursion_id_workspace_id_fkey FOREIGN KEY (incursion_id, workspace_id) REFERENCES public.vv_incursions(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_traps vv_traps_council_trap_type_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_traps
     ADD CONSTRAINT vv_traps_council_trap_type_id_workspace_id_fkey FOREIGN KEY (council_trap_type_id, workspace_id) REFERENCES public.vv_council_trap_types(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_traps vv_traps_trap_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_traps
     ADD CONSTRAINT vv_traps_trap_type_id_fkey FOREIGN KEY (trap_type_id) REFERENCES public.vv_trap_types(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_traps vv_traps_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_traps
     ADD CONSTRAINT vv_traps_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_visits vv_visits_deployment_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_visits
     ADD CONSTRAINT vv_visits_deployment_id_workspace_id_fkey FOREIGN KEY (deployment_id, workspace_id) REFERENCES public.vv_deployments(id, workspace_id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_visits vv_visits_site_id_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_visits
     ADD CONSTRAINT vv_visits_site_id_workspace_id_fkey FOREIGN KEY (site_id, workspace_id) REFERENCES public.vv_sites(id, workspace_id) ON DELETE RESTRICT;
 
-
---
--- Name: vv_visits vv_visits_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vv_visits
     ADD CONSTRAINT vv_visits_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
-
-
---
--- Name: vv_workspace_settings vv_workspace_settings_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vv_workspace_settings
     ADD CONSTRAINT vv_workspace_settings_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE RESTRICT;
 
-
---
--- Name: workspace_invitations workspace_invitations_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.workspace_invitations
     ADD CONSTRAINT workspace_invitations_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES auth.users(id) ON DELETE SET NULL;
-
-
---
--- Name: workspace_invitations workspace_invitations_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.workspace_invitations
     ADD CONSTRAINT workspace_invitations_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE;
 
-
---
--- Name: workspace_members workspace_members_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.workspace_members
     ADD CONSTRAINT workspace_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
-
-
---
--- Name: workspace_members workspace_members_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.workspace_members
     ADD CONSTRAINT workspace_members_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE;
 
-
---
--- Name: workspace_product_events workspace_product_events_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.workspace_product_events
     ADD CONSTRAINT workspace_product_events_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE;
-
-
---
--- Name: workspace_products workspace_products_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.workspace_products
     ADD CONSTRAINT workspace_products_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE;
 
-
---
--- Name: workspaces workspaces_personal_owner_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.workspaces
     ADD CONSTRAINT workspaces_personal_owner_id_fkey FOREIGN KEY (personal_owner_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-
---
--- Name: audit_events; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.audit_events ENABLE ROW LEVEL SECURITY;
-
---
--- Name: audit_events audit_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY audit_read ON public.audit_events FOR SELECT TO authenticated USING (public.has_ws_role(workspace_id, ARRAY['owner'::public.workspace_role, 'admin'::public.workspace_role]));
 
-
---
--- Name: content_roles; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.content_roles ENABLE ROW LEVEL SECURITY;
-
---
--- Name: content_roles content_roles_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY content_roles_read ON public.content_roles FOR SELECT TO authenticated USING (((user_id = auth.uid()) OR public.has_content_role(ARRAY['content_admin'::public.content_role])));
 
-
---
--- Name: invitation_emails; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.invitation_emails ENABLE ROW LEVEL SECURITY;
-
---
--- Name: invitation_emails invitation_emails_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY invitation_emails_read ON public.invitation_emails FOR SELECT TO authenticated USING (public.has_ws_role(workspace_id, ARRAY['owner'::public.workspace_role, 'admin'::public.workspace_role]));
 
-
---
--- Name: workspace_invitations invites_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY invites_read ON public.workspace_invitations FOR SELECT TO authenticated USING (public.has_ws_role(workspace_id, ARRAY['owner'::public.workspace_role, 'admin'::public.workspace_role]));
-
-
---
--- Name: workspace_members members_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY members_read ON public.workspace_members FOR SELECT TO authenticated USING (public.is_member(workspace_id));
 
-
---
--- Name: platform_admins; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.platform_admins ENABLE ROW LEVEL SECURITY;
-
---
--- Name: platform_admins platform_admins_self; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY platform_admins_self ON public.platform_admins FOR SELECT TO authenticated USING ((user_id = auth.uid()));
 
-
---
--- Name: product_access; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.product_access ENABLE ROW LEVEL SECURITY;
-
---
--- Name: product_access product_access_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY product_access_read ON public.product_access FOR SELECT TO authenticated USING (public.is_member(workspace_id));
 
-
---
--- Name: profiles profile_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY profile_read ON public.profiles FOR SELECT TO authenticated USING ((id = auth.uid()));
-
-
---
--- Name: profiles profile_update; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY profile_update ON public.profiles FOR UPDATE TO authenticated USING ((id = auth.uid())) WITH CHECK ((id = auth.uid()));
 
-
---
--- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
---
--- Name: team_members; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
---
--- Name: team_members team_members_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY team_members_read ON public.team_members FOR SELECT TO authenticated USING (public.is_member(workspace_id));
-
-
---
--- Name: teams; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 
---
--- Name: teams teams_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY teams_read ON public.teams FOR SELECT TO authenticated USING (public.is_member(workspace_id));
-
-
---
--- Name: vv_actions; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_actions ENABLE ROW LEVEL SECURITY;
 
---
--- Name: vv_actions vv_actions_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_actions_read ON public.vv_actions FOR SELECT TO authenticated USING (public.vv_can_see_site(site_id));
 
-
---
--- Name: vv_assessment_results; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_assessment_results ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_assessment_results vv_assessment_results_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_assessment_results_read ON public.vv_assessment_results FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
    FROM public.vv_assessments a
   WHERE (a.id = vv_assessment_results.assessment_id))));
 
-
---
--- Name: vv_assessment_versions; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_assessment_versions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_assessment_versions vv_assessment_versions_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_assessment_versions_read ON public.vv_assessment_versions FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
    FROM public.vv_assessments a
   WHERE (a.id = vv_assessment_versions.assessment_id))));
 
-
---
--- Name: vv_assessments; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_assessments ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_assessments vv_assessments_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_assessments_read ON public.vv_assessments FOR SELECT TO authenticated USING (public.vv_can_see_site(site_id));
 
-
---
--- Name: vv_attachment_events; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_attachment_events ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_attachment_events vv_attachment_events_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_attachment_events_read ON public.vv_attachment_events FOR SELECT TO authenticated USING (public.vv_can_read_attachment(attachment_id));
 
-
---
--- Name: vv_attachments; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_attachments ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_attachments vv_attachments_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_attachments_read ON public.vv_attachments FOR SELECT TO authenticated USING (public.vv_can_see_site(site_id));
 
-
---
--- Name: vv_council_taxa; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_council_taxa ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_council_taxa vv_council_taxa_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_council_taxa_read ON public.vv_council_taxa FOR SELECT TO authenticated USING (public.vv_has(workspace_id, ARRAY['view'::text, 'field'::text, 'manage'::text]));
 
-
---
--- Name: vv_council_trap_types; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_council_trap_types ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_council_trap_types vv_council_trap_types_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_council_trap_types_read ON public.vv_council_trap_types FOR SELECT TO authenticated USING (public.vv_has(workspace_id, ARRAY['view'::text, 'field'::text, 'manage'::text]));
 
-
---
--- Name: vv_deployments; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_deployments ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_deployments vv_deployments_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_deployments_read ON public.vv_deployments FOR SELECT TO authenticated USING (public.vv_can_see_site(site_id));
 
-
---
--- Name: vv_events; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_events ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_events vv_events_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_events_read ON public.vv_events FOR SELECT TO authenticated USING (
 CASE record_type
@@ -4988,1498 +2994,635 @@ CASE record_type
     ELSE public.vv_has(workspace_id, ARRAY['view'::text, 'field'::text, 'manage'::text])
 END);
 
-
---
--- Name: vv_exports; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_exports ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_exports vv_exports_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_exports_read ON public.vv_exports FOR SELECT TO authenticated USING ((public.vv_has(workspace_id, ARRAY['manage'::text]) OR ((created_by = auth.uid()) AND public.vv_has(workspace_id, ARRAY['view'::text, 'field'::text, 'manage'::text]))));
 
-
---
--- Name: vv_external_refs; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_external_refs ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_external_refs vv_external_refs_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_external_refs_read ON public.vv_external_refs FOR SELECT TO authenticated USING (public.vv_can_see_record(record_type, record_id));
 
-
---
--- Name: vv_incursion_findings; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_incursion_findings ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_incursion_findings vv_incursion_findings_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_incursion_findings_read ON public.vv_incursion_findings FOR SELECT TO authenticated USING (public.vv_can_see_incursion(incursion_id));
 
-
---
--- Name: vv_incursion_sites; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_incursion_sites ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_incursion_sites vv_incursion_sites_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_incursion_sites_read ON public.vv_incursion_sites FOR SELECT TO authenticated USING (public.vv_can_see_incursion(incursion_id));
 
-
---
--- Name: vv_incursion_steps; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_incursion_steps ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_incursion_steps vv_incursion_steps_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_incursion_steps_read ON public.vv_incursion_steps FOR SELECT TO authenticated USING (public.vv_can_see_incursion(incursion_id));
 
-
---
--- Name: vv_incursions; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_incursions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_incursions vv_incursions_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_incursions_read ON public.vv_incursions FOR SELECT TO authenticated USING (public.vv_can_see_site(site_id));
 
-
---
--- Name: vv_library_images; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_library_images ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_library_images vv_library_images_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_library_images_read ON public.vv_library_images FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
    FROM public.vv_library_versions v
   WHERE (v.id = vv_library_images.version_id))));
 
-
---
--- Name: vv_library_notes; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_library_notes ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_library_notes vv_library_notes_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_library_notes_read ON public.vv_library_notes FOR SELECT TO authenticated USING (public.vv_has(workspace_id, ARRAY['view'::text, 'field'::text, 'manage'::text]));
 
-
---
--- Name: vv_library_versions; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_library_versions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_library_versions vv_library_versions_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_library_versions_read ON public.vv_library_versions FOR SELECT TO authenticated USING (((status = ANY (ARRAY['published'::public.kp_status, 'superseded'::public.kp_status])) OR public.kp_is_editor()));
 
-
---
--- Name: vv_notifications; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_notifications ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_notifications vv_notifications_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_notifications_read ON public.vv_notifications FOR SELECT TO authenticated USING (public.vv_can_see_incursion(incursion_id));
 
-
---
--- Name: vv_notify_contacts; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_notify_contacts ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_notify_contacts vv_notify_contacts_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_notify_contacts_read ON public.vv_notify_contacts FOR SELECT TO authenticated USING (public.vv_has(workspace_id, ARRAY['view'::text, 'field'::text, 'manage'::text]));
 
-
---
--- Name: vv_programme_teams; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_programme_teams ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_programme_teams vv_programme_teams_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_programme_teams_read ON public.vv_programme_teams FOR SELECT TO authenticated USING (public.vv_can_see_programme(programme_id));
 
-
---
--- Name: vv_programmes; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_programmes ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_programmes vv_programmes_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_programmes_read ON public.vv_programmes FOR SELECT TO authenticated USING (public.vv_can_see_programme(id));
 
-
---
--- Name: vv_result_versions; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_result_versions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_result_versions vv_result_versions_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_result_versions_read ON public.vv_result_versions FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
    FROM public.vv_results r
   WHERE (r.id = vv_result_versions.result_id))));
 
-
---
--- Name: vv_results; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_results ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_results vv_results_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_results_read ON public.vv_results FOR SELECT TO authenticated USING (public.vv_can_see_site(site_id));
 
-
---
--- Name: vv_samples; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.vv_samples ENABLE ROW LEVEL SECURITY;
-
---
--- Name: vv_samples vv_samples_read; Type: POLICY; Schema: public; Owner: -
---
 
 CREATE POLICY vv_samples_read ON public.vv_samples FOR SELECT TO authenticated USING (public.vv_can_see_site(site_id));
 
-
---
--- Name: vv_workspace_settings vv_settings_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_settings_read ON public.vv_workspace_settings FOR SELECT TO authenticated USING (public.vv_has(workspace_id, ARRAY['view'::text, 'field'::text, 'manage'::text]));
-
-
---
--- Name: vv_site_programmes; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_site_programmes ENABLE ROW LEVEL SECURITY;
 
---
--- Name: vv_site_programmes vv_site_programmes_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_site_programmes_read ON public.vv_site_programmes FOR SELECT TO authenticated USING ((public.vv_can_see_site(site_id) AND public.vv_can_see_programme(programme_id)));
-
-
---
--- Name: vv_sites; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_sites ENABLE ROW LEVEL SECURITY;
 
---
--- Name: vv_sites vv_sites_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_sites_read ON public.vv_sites FOR SELECT TO authenticated USING (public.vv_can_see_site(id));
-
-
---
--- Name: vv_stand_downs; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_stand_downs ENABLE ROW LEVEL SECURITY;
 
---
--- Name: vv_stand_downs vv_stand_downs_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_stand_downs_read ON public.vv_stand_downs FOR SELECT TO authenticated USING (public.vv_can_see_incursion(incursion_id));
-
-
---
--- Name: vv_taxa; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_taxa ENABLE ROW LEVEL SECURITY;
 
---
--- Name: vv_taxa vv_taxa_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_taxa_read ON public.vv_taxa FOR SELECT TO authenticated USING (true);
-
-
---
--- Name: vv_trap_types; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_trap_types ENABLE ROW LEVEL SECURITY;
 
---
--- Name: vv_trap_types vv_trap_types_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_trap_types_read ON public.vv_trap_types FOR SELECT TO authenticated USING (true);
-
-
---
--- Name: vv_traps; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_traps ENABLE ROW LEVEL SECURITY;
 
---
--- Name: vv_traps vv_traps_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_traps_read ON public.vv_traps FOR SELECT TO authenticated USING (public.vv_has(workspace_id, ARRAY['view'::text, 'field'::text, 'manage'::text]));
-
-
---
--- Name: vv_visits; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_visits ENABLE ROW LEVEL SECURITY;
 
---
--- Name: vv_visits vv_visits_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY vv_visits_read ON public.vv_visits FOR SELECT TO authenticated USING (public.vv_can_see_site(site_id));
-
-
---
--- Name: vv_workspace_settings; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.vv_workspace_settings ENABLE ROW LEVEL SECURITY;
 
---
--- Name: workspace_invitations; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.workspace_invitations ENABLE ROW LEVEL SECURITY;
-
---
--- Name: workspace_members; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.workspace_members ENABLE ROW LEVEL SECURITY;
 
---
--- Name: workspace_product_events; Type: ROW SECURITY; Schema: public; Owner: -
---
-
 ALTER TABLE public.workspace_product_events ENABLE ROW LEVEL SECURITY;
-
---
--- Name: workspace_products; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.workspace_products ENABLE ROW LEVEL SECURITY;
 
---
--- Name: workspace_products workspace_products_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY workspace_products_read ON public.workspace_products FOR SELECT TO authenticated USING ((public.is_member(workspace_id) OR public.is_platform_admin()));
-
-
---
--- Name: workspaces; Type: ROW SECURITY; Schema: public; Owner: -
---
 
 ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
 
---
--- Name: workspaces ws_read; Type: POLICY; Schema: public; Owner: -
---
-
 CREATE POLICY ws_read ON public.workspaces FOR SELECT TO authenticated USING (public.is_member(id));
 
+-- Lock down Supabase's default grants: every new table, sequence and function in
+-- public is granted to anon and authenticated automatically. Revoke by name, then
+-- the grants below give back only what each role needs.
+REVOKE ALL ON TABLE public.audit_events FROM anon, authenticated;
+REVOKE ALL ON TABLE public.content_roles FROM anon, authenticated;
+REVOKE ALL ON TABLE public.invitation_emails FROM anon, authenticated;
+REVOKE ALL ON TABLE public.platform_admins FROM anon, authenticated;
+REVOKE ALL ON TABLE public.product_access FROM anon, authenticated;
+REVOKE ALL ON TABLE public.profiles FROM anon, authenticated;
+REVOKE ALL ON TABLE public.team_members FROM anon, authenticated;
+REVOKE ALL ON TABLE public.teams FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_actions FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_assessment_results FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_assessment_versions FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_assessments FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_attachment_events FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_attachments FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_council_taxa FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_council_trap_types FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_deployments FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_events FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_exports FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_external_refs FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_incursion_findings FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_incursion_sites FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_incursion_steps FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_incursions FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_library_images FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_library_notes FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_library_versions FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_notifications FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_notify_contacts FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_programme_teams FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_programmes FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_result_versions FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_results FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_samples FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_site_programmes FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_sites FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_stand_downs FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_taxa FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_trap_types FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_traps FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_visits FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vv_workspace_settings FROM anon, authenticated;
+REVOKE ALL ON TABLE public.workspace_invitations FROM anon, authenticated;
+REVOKE ALL ON TABLE public.workspace_members FROM anon, authenticated;
+REVOKE ALL ON TABLE public.workspace_product_events FROM anon, authenticated;
+REVOKE ALL ON TABLE public.workspace_products FROM anon, authenticated;
+REVOKE ALL ON TABLE public.workspaces FROM anon, authenticated;
+REVOKE ALL ON SEQUENCE public.audit_events_id_seq FROM anon, authenticated;
+REVOKE ALL ON SEQUENCE public.invitation_emails_id_seq FROM anon, authenticated;
+REVOKE ALL ON SEQUENCE public.vv_attachment_events_id_seq FROM anon, authenticated;
+REVOKE ALL ON SEQUENCE public.vv_events_id_seq FROM anon, authenticated;
+REVOKE ALL ON SEQUENCE public.workspace_product_events_id_seq FROM anon, authenticated;
 
-
---
--- Name: FUNCTION accept_invitation(_token text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.accept_invitation(_token text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.accept_invitation(_token text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.accept_invitation(_token text) TO authenticated;
 GRANT ALL ON FUNCTION public.accept_invitation(_token text) TO service_role;
 
-
---
--- Name: FUNCTION create_invitation(_ws uuid, _email text, _role public.workspace_role); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.create_invitation(_ws uuid, _email text, _role public.workspace_role) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.create_invitation(_ws uuid, _email text, _role public.workspace_role) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.create_invitation(_ws uuid, _email text, _role public.workspace_role) TO authenticated;
 GRANT ALL ON FUNCTION public.create_invitation(_ws uuid, _email text, _role public.workspace_role) TO service_role;
 
+REVOKE ALL ON FUNCTION public.default_workspace_products() FROM PUBLIC, anon, authenticated;
 
---
--- Name: FUNCTION default_workspace_products(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.default_workspace_products() FROM PUBLIC;
-
-
---
--- Name: FUNCTION forbid_update(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.forbid_update() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.forbid_update() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.forbid_update() TO service_role;
 
-
---
--- Name: FUNCTION grant_content_role(_user uuid, _role public.content_role); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.grant_content_role(_user uuid, _role public.content_role) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.grant_content_role(_user uuid, _role public.content_role) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.grant_content_role(_user uuid, _role public.content_role) TO authenticated;
 GRANT ALL ON FUNCTION public.grant_content_role(_user uuid, _role public.content_role) TO service_role;
 
-
---
--- Name: FUNCTION guard_immutable(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.guard_immutable() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.guard_immutable() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.guard_immutable() TO service_role;
 
-
---
--- Name: FUNCTION guard_membership(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.guard_membership() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.guard_membership() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.guard_membership() TO service_role;
 
-
---
--- Name: FUNCTION has_content_role(_roles public.content_role[]); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.has_content_role(_roles public.content_role[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.has_content_role(_roles public.content_role[]) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.has_content_role(_roles public.content_role[]) TO authenticated;
 GRANT ALL ON FUNCTION public.has_content_role(_roles public.content_role[]) TO service_role;
 
-
---
--- Name: FUNCTION has_product(_ws uuid, _product text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.has_product(_ws uuid, _product text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.has_product(_ws uuid, _product text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.has_product(_ws uuid, _product text) TO authenticated;
 GRANT ALL ON FUNCTION public.has_product(_ws uuid, _product text) TO service_role;
 
-
---
--- Name: FUNCTION has_product_access(_ws uuid, _product text, _levels text[]); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.has_product_access(_ws uuid, _product text, _levels text[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.has_product_access(_ws uuid, _product text, _levels text[]) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.has_product_access(_ws uuid, _product text, _levels text[]) TO authenticated;
 GRANT ALL ON FUNCTION public.has_product_access(_ws uuid, _product text, _levels text[]) TO service_role;
 
-
---
--- Name: FUNCTION has_ws_role(_ws uuid, _roles public.workspace_role[]); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.has_ws_role(_ws uuid, _roles public.workspace_role[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.has_ws_role(_ws uuid, _roles public.workspace_role[]) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.has_ws_role(_ws uuid, _roles public.workspace_role[]) TO authenticated;
 GRANT ALL ON FUNCTION public.has_ws_role(_ws uuid, _roles public.workspace_role[]) TO service_role;
 
-
---
--- Name: FUNCTION invitation_for_email(_token text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.invitation_for_email(_token text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.invitation_for_email(_token text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.invitation_for_email(_token text) TO authenticated;
 GRANT ALL ON FUNCTION public.invitation_for_email(_token text) TO service_role;
 
-
---
--- Name: FUNCTION is_member(_ws uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.is_member(_ws uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_member(_ws uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.is_member(_ws uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.is_member(_ws uuid) TO service_role;
 
-
---
--- Name: FUNCTION is_platform_admin(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.is_platform_admin() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_platform_admin() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.is_platform_admin() TO authenticated;
 GRANT ALL ON FUNCTION public.is_platform_admin() TO service_role;
 
+REVOKE ALL ON FUNCTION public.kp_guard_version() FROM PUBLIC, anon, authenticated;
 
---
--- Name: FUNCTION kp_guard_version(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.kp_guard_version() FROM PUBLIC;
-
-
---
--- Name: FUNCTION kp_is_editor(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.kp_is_editor() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.kp_is_editor() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.kp_is_editor() TO authenticated;
 GRANT ALL ON FUNCTION public.kp_is_editor() TO service_role;
 
-
---
--- Name: FUNCTION may_invite(_ws uuid, _role public.workspace_role); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.may_invite(_ws uuid, _role public.workspace_role) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.may_invite(_ws uuid, _role public.workspace_role) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.may_invite(_ws uuid, _role public.workspace_role) TO service_role;
 
-
---
--- Name: FUNCTION my_products(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.my_products() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.my_products() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.my_products() TO authenticated;
 GRANT ALL ON FUNCTION public.my_products() TO service_role;
 
-
---
--- Name: FUNCTION platform_workspaces(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.platform_workspaces() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.platform_workspaces() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.platform_workspaces() TO authenticated;
 GRANT ALL ON FUNCTION public.platform_workspaces() TO service_role;
 
-
---
--- Name: FUNCTION product_level(_ws uuid, _product text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.product_level(_ws uuid, _product text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.product_level(_ws uuid, _product text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.product_level(_ws uuid, _product text) TO authenticated;
 GRANT ALL ON FUNCTION public.product_level(_ws uuid, _product text) TO service_role;
 
-
---
--- Name: FUNCTION record_invitation_email(_invitation uuid, _sent_by uuid, _status text, _provider_message_id text, _error text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.record_invitation_email(_invitation uuid, _sent_by uuid, _status text, _provider_message_id text, _error text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.record_invitation_email(_invitation uuid, _sent_by uuid, _status text, _provider_message_id text, _error text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.record_invitation_email(_invitation uuid, _sent_by uuid, _status text, _provider_message_id text, _error text) TO service_role;
 
-
---
--- Name: FUNCTION reissue_invitation(_invitation uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.reissue_invitation(_invitation uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reissue_invitation(_invitation uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.reissue_invitation(_invitation uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.reissue_invitation(_invitation uuid) TO service_role;
 
-
---
--- Name: FUNCTION remove_member(_ws uuid, _user uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.remove_member(_ws uuid, _user uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.remove_member(_ws uuid, _user uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.remove_member(_ws uuid, _user uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.remove_member(_ws uuid, _user uuid) TO service_role;
 
-
---
--- Name: FUNCTION revoke_content_role(_user uuid, _role public.content_role); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.revoke_content_role(_user uuid, _role public.content_role) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.revoke_content_role(_user uuid, _role public.content_role) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.revoke_content_role(_user uuid, _role public.content_role) TO authenticated;
 GRANT ALL ON FUNCTION public.revoke_content_role(_user uuid, _role public.content_role) TO service_role;
 
-
---
--- Name: FUNCTION revoke_invitation(_invitation uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.revoke_invitation(_invitation uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.revoke_invitation(_invitation uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.revoke_invitation(_invitation uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.revoke_invitation(_invitation uuid) TO service_role;
 
-
---
--- Name: FUNCTION role_in(_ws uuid, _user uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.role_in(_ws uuid, _user uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.role_in(_ws uuid, _user uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.role_in(_ws uuid, _user uuid) TO service_role;
 
-
---
--- Name: FUNCTION set_member_role(_ws uuid, _user uuid, _role public.workspace_role); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.set_member_role(_ws uuid, _user uuid, _role public.workspace_role) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.set_member_role(_ws uuid, _user uuid, _role public.workspace_role) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.set_member_role(_ws uuid, _user uuid, _role public.workspace_role) TO authenticated;
 GRANT ALL ON FUNCTION public.set_member_role(_ws uuid, _user uuid, _role public.workspace_role) TO service_role;
 
-
---
--- Name: FUNCTION set_workspace_product(_ws uuid, _product text, _enabled boolean); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.set_workspace_product(_ws uuid, _product text, _enabled boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.set_workspace_product(_ws uuid, _product text, _enabled boolean) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.set_workspace_product(_ws uuid, _product text, _enabled boolean) TO authenticated;
 GRANT ALL ON FUNCTION public.set_workspace_product(_ws uuid, _product text, _enabled boolean) TO service_role;
 
-
---
--- Name: FUNCTION touch_updated_at(); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.touch_updated_at() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.touch_updated_at() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.touch_updated_at() TO service_role;
 
-
---
--- Name: FUNCTION transfer_ownership(_ws uuid, _to uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.transfer_ownership(_ws uuid, _to uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.transfer_ownership(_ws uuid, _to uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.transfer_ownership(_ws uuid, _to uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.transfer_ownership(_ws uuid, _to uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_can_read_attachment(_id uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_can_read_attachment(_id uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_can_read_attachment(_id uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_can_read_attachment(_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_can_read_attachment(_id uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_can_run_incursion(_incursion uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_can_run_incursion(_incursion uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_can_run_incursion(_incursion uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_can_run_incursion(_incursion uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_can_run_incursion(_incursion uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_can_see_incursion(_incursion uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_can_see_incursion(_incursion uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_can_see_incursion(_incursion uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_can_see_incursion(_incursion uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_can_see_incursion(_incursion uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_can_see_programme(_programme uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_can_see_programme(_programme uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_can_see_programme(_programme uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_can_see_programme(_programme uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_can_see_programme(_programme uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_can_see_record(_type text, _id uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_can_see_record(_type text, _id uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_can_see_record(_type text, _id uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_can_see_record(_type text, _id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_can_see_record(_type text, _id uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_can_see_site(_site uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_can_see_site(_site uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_can_see_site(_site uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_can_see_site(_site uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_can_see_site(_site uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_check_time(_t timestamp with time zone, _what text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_check_time(_t timestamp with time zone, _what text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_check_time(_t timestamp with time zone, _what text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_check_time(_t timestamp with time zone, _what text) TO service_role;
 
-
---
--- Name: FUNCTION vv_confirm_attachment(_id uuid, _sha256 text, _size_bytes bigint); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_confirm_attachment(_id uuid, _sha256 text, _size_bytes bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_confirm_attachment(_id uuid, _sha256 text, _size_bytes bigint) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_confirm_attachment(_id uuid, _sha256 text, _size_bytes bigint) TO service_role;
 
-
---
--- Name: FUNCTION vv_correct_attachment(_id uuid, _caption text, _captured_at timestamp with time zone, _capture_source text, _why text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_correct_attachment(_id uuid, _caption text, _captured_at timestamp with time zone, _capture_source text, _why text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_correct_attachment(_id uuid, _caption text, _captured_at timestamp with time zone, _capture_source text, _why text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_correct_attachment(_id uuid, _caption text, _captured_at timestamp with time zone, _capture_source text, _why text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_correct_attachment(_id uuid, _caption text, _captured_at timestamp with time zone, _capture_source text, _why text) TO service_role;
 
-
---
--- Name: FUNCTION vv_correct_visit(_visit uuid, _occurred_at timestamp with time zone, _officer uuid, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _not_completed_reason text, _why text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_correct_visit(_visit uuid, _occurred_at timestamp with time zone, _officer uuid, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _not_completed_reason text, _why text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_correct_visit(_visit uuid, _occurred_at timestamp with time zone, _officer uuid, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _not_completed_reason text, _why text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_correct_visit(_visit uuid, _occurred_at timestamp with time zone, _officer uuid, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _not_completed_reason text, _why text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_correct_visit(_visit uuid, _occurred_at timestamp with time zone, _officer uuid, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _not_completed_reason text, _why text) TO service_role;
 
-
---
--- Name: FUNCTION vv_deploy_trap(_id uuid, _ws uuid, _trap uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _started_at timestamp with time zone, _officer uuid, _interval integer); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_deploy_trap(_id uuid, _ws uuid, _trap uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _started_at timestamp with time zone, _officer uuid, _interval integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_deploy_trap(_id uuid, _ws uuid, _trap uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _started_at timestamp with time zone, _officer uuid, _interval integer) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_deploy_trap(_id uuid, _ws uuid, _trap uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _started_at timestamp with time zone, _officer uuid, _interval integer) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_deploy_trap(_id uuid, _ws uuid, _trap uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _started_at timestamp with time zone, _officer uuid, _interval integer) TO service_role;
 
+REVOKE ALL ON FUNCTION public.vv_diff(_before jsonb, _after jsonb) FROM PUBLIC, anon, authenticated;
 
---
--- Name: FUNCTION vv_diff(_before jsonb, _after jsonb); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_diff(_before jsonb, _after jsonb) FROM PUBLIC;
-
-
---
--- Name: FUNCTION vv_end_deployment(_deployment uuid, _ended_at timestamp with time zone, _reason text, _note text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_end_deployment(_deployment uuid, _ended_at timestamp with time zone, _reason text, _note text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_end_deployment(_deployment uuid, _ended_at timestamp with time zone, _reason text, _note text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_end_deployment(_deployment uuid, _ended_at timestamp with time zone, _reason text, _note text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_end_deployment(_deployment uuid, _ended_at timestamp with time zone, _reason text, _note text) TO service_role;
 
+REVOKE ALL ON FUNCTION public.vv_event(_ws uuid, _type text, _id uuid, _kind text, _detail jsonb) FROM PUBLIC, anon, authenticated;
 
---
--- Name: FUNCTION vv_event(_ws uuid, _type text, _id uuid, _kind text, _detail jsonb); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_event(_ws uuid, _type text, _id uuid, _kind text, _detail jsonb) FROM PUBLIC;
-
-
---
--- Name: FUNCTION vv_findings_awaiting_review(_ws uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_findings_awaiting_review(_ws uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_findings_awaiting_review(_ws uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_findings_awaiting_review(_ws uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_findings_awaiting_review(_ws uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_has(_ws uuid, _levels text[]); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_has(_ws uuid, _levels text[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_has(_ws uuid, _levels text[]) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_has(_ws uuid, _levels text[]) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_has(_ws uuid, _levels text[]) TO service_role;
 
-
---
--- Name: FUNCTION vv_lib_add_image(_id uuid, _version uuid, _file_name text, _caption text, _credit text, _licence text, _source_url text, _sort integer); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_lib_add_image(_id uuid, _version uuid, _file_name text, _caption text, _credit text, _licence text, _source_url text, _sort integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_lib_add_image(_id uuid, _version uuid, _file_name text, _caption text, _credit text, _licence text, _source_url text, _sort integer) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_add_image(_id uuid, _version uuid, _file_name text, _caption text, _credit text, _licence text, _source_url text, _sort integer) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_add_image(_id uuid, _version uuid, _file_name text, _caption text, _credit text, _licence text, _source_url text, _sort integer) TO service_role;
 
-
---
--- Name: FUNCTION vv_lib_publish(_version uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_lib_publish(_version uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_lib_publish(_version uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_publish(_version uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_publish(_version uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_lib_review(_version uuid, _approve boolean, _note text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_lib_review(_version uuid, _approve boolean, _note text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_lib_review(_version uuid, _approve boolean, _note text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_review(_version uuid, _approve boolean, _note text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_review(_version uuid, _approve boolean, _note text) TO service_role;
 
-
---
--- Name: FUNCTION vv_lib_save_draft(_kind text, _subject uuid, _content jsonb, _sources jsonb); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_lib_save_draft(_kind text, _subject uuid, _content jsonb, _sources jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_lib_save_draft(_kind text, _subject uuid, _content jsonb, _sources jsonb) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_save_draft(_kind text, _subject uuid, _content jsonb, _sources jsonb) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_save_draft(_kind text, _subject uuid, _content jsonb, _sources jsonb) TO service_role;
 
-
---
--- Name: FUNCTION vv_lib_submit(_version uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_lib_submit(_version uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_lib_submit(_version uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_submit(_version uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_lib_submit(_version uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_link_incursion(_id uuid, _results uuid[], _sites uuid[]); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_link_incursion(_id uuid, _results uuid[], _sites uuid[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_link_incursion(_id uuid, _results uuid[], _sites uuid[]) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_link_incursion(_id uuid, _results uuid[], _sites uuid[]) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_link_incursion(_id uuid, _results uuid[], _sites uuid[]) TO service_role;
 
-
---
--- Name: FUNCTION vv_log_attachment_access(_id uuid, _action text, _actor uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_log_attachment_access(_id uuid, _action text, _actor uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_log_attachment_access(_id uuid, _action text, _actor uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_log_attachment_access(_id uuid, _action text, _actor uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_log_export(_id uuid, _ws uuid, _kind text, _scope jsonb, _counts jsonb, _file_name text, _size bigint, _sha256 text, _format_version text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_log_export(_id uuid, _ws uuid, _kind text, _scope jsonb, _counts jsonb, _file_name text, _size bigint, _sha256 text, _format_version text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_log_export(_id uuid, _ws uuid, _kind text, _scope jsonb, _counts jsonb, _file_name text, _size bigint, _sha256 text, _format_version text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_log_export(_id uuid, _ws uuid, _kind text, _scope jsonb, _counts jsonb, _file_name text, _size bigint, _sha256 text, _format_version text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_log_export(_id uuid, _ws uuid, _kind text, _scope jsonb, _counts jsonb, _file_name text, _size bigint, _sha256 text, _format_version text) TO service_role;
 
-
---
--- Name: FUNCTION vv_matrix_level(_likelihood integer, _consequence integer); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_matrix_level(_likelihood integer, _consequence integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_matrix_level(_likelihood integer, _consequence integer) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_matrix_level(_likelihood integer, _consequence integer) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_matrix_level(_likelihood integer, _consequence integer) TO service_role;
 
-
---
--- Name: FUNCTION vv_move_trap(_deployment uuid, _new_id uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _moved_at timestamp with time zone, _officer uuid, _interval integer); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_move_trap(_deployment uuid, _new_id uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _moved_at timestamp with time zone, _officer uuid, _interval integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_move_trap(_deployment uuid, _new_id uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _moved_at timestamp with time zone, _officer uuid, _interval integer) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_move_trap(_deployment uuid, _new_id uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _moved_at timestamp with time zone, _officer uuid, _interval integer) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_move_trap(_deployment uuid, _new_id uuid, _site uuid, _latitude double precision, _longitude double precision, _placement text, _moved_at timestamp with time zone, _officer uuid, _interval integer) TO service_role;
 
-
---
--- Name: FUNCTION vv_open_incursion(_id uuid, _site uuid, _results uuid[], _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_open_incursion(_id uuid, _site uuid, _results uuid[], _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_open_incursion(_id uuid, _site uuid, _results uuid[], _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_open_incursion(_id uuid, _site uuid, _results uuid[], _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_open_incursion(_id uuid, _site uuid, _results uuid[], _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text) TO service_role;
 
-
---
--- Name: FUNCTION vv_record_notification(_id uuid, _incursion uuid, _kind text, _contact uuid, _recipient text, _method text, _notified_at timestamp with time zone, _reference text, _note text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_record_notification(_id uuid, _incursion uuid, _kind text, _contact uuid, _recipient text, _method text, _notified_at timestamp with time zone, _reference text, _note text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_record_notification(_id uuid, _incursion uuid, _kind text, _contact uuid, _recipient text, _method text, _notified_at timestamp with time zone, _reference text, _note text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_record_notification(_id uuid, _incursion uuid, _kind text, _contact uuid, _recipient text, _method text, _notified_at timestamp with time zone, _reference text, _note text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_record_notification(_id uuid, _incursion uuid, _kind text, _contact uuid, _recipient text, _method text, _notified_at timestamp with time zone, _reference text, _note text) TO service_role;
 
-
---
--- Name: FUNCTION vv_record_visit(_id uuid, _deployment uuid, _occurred_at timestamp with time zone, _officer uuid, _outcome text, _reason text, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _samples jsonb); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_record_visit(_id uuid, _deployment uuid, _occurred_at timestamp with time zone, _officer uuid, _outcome text, _reason text, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _samples jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_record_visit(_id uuid, _deployment uuid, _occurred_at timestamp with time zone, _officer uuid, _outcome text, _reason text, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _samples jsonb) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_record_visit(_id uuid, _deployment uuid, _occurred_at timestamp with time zone, _officer uuid, _outcome text, _reason text, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _samples jsonb) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_record_visit(_id uuid, _deployment uuid, _occurred_at timestamp with time zone, _officer uuid, _outcome text, _reason text, _condition text, _observations text, _exposure_start timestamp with time zone, _exposure_end timestamp with time zone, _samples jsonb) TO service_role;
 
-
---
--- Name: FUNCTION vv_record_workspace(_type text, _id uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_record_workspace(_type text, _id uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_record_workspace(_type text, _id uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_record_workspace(_type text, _id uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_refresh_sample_status(_sample uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_refresh_sample_status(_sample uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_refresh_sample_status(_sample uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_refresh_sample_status(_sample uuid) TO service_role;
 
-
---
--- Name: FUNCTION vv_register_attachment(_id uuid, _record_type text, _record_id uuid, _file_name text, _mime_type text, _size_bytes bigint, _sha256 text, _caption text, _captured_at timestamp with time zone, _capture_source text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_register_attachment(_id uuid, _record_type text, _record_id uuid, _file_name text, _mime_type text, _size_bytes bigint, _sha256 text, _caption text, _captured_at timestamp with time zone, _capture_source text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_register_attachment(_id uuid, _record_type text, _record_id uuid, _file_name text, _mime_type text, _size_bytes bigint, _sha256 text, _caption text, _captured_at timestamp with time zone, _capture_source text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_register_attachment(_id uuid, _record_type text, _record_id uuid, _file_name text, _mime_type text, _size_bytes bigint, _sha256 text, _caption text, _captured_at timestamp with time zone, _capture_source text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_register_attachment(_id uuid, _record_type text, _record_id uuid, _file_name text, _mime_type text, _size_bytes bigint, _sha256 text, _caption text, _captured_at timestamp with time zone, _capture_source text) TO service_role;
 
-
---
--- Name: FUNCTION vv_remove_external_ref(_id uuid, _reason text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_remove_external_ref(_id uuid, _reason text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_remove_external_ref(_id uuid, _reason text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_remove_external_ref(_id uuid, _reason text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_remove_external_ref(_id uuid, _reason text) TO service_role;
 
-
---
--- Name: FUNCTION vv_reopen_incursion(_id uuid, _incursion uuid, _status text, _reason text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_reopen_incursion(_id uuid, _incursion uuid, _status text, _reason text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_reopen_incursion(_id uuid, _incursion uuid, _status text, _reason text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_reopen_incursion(_id uuid, _incursion uuid, _status text, _reason text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_reopen_incursion(_id uuid, _incursion uuid, _status text, _reason text) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_action(_id uuid, _site uuid, _assessment uuid, _title text, _detail text, _owner uuid, _due date); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_action(_id uuid, _site uuid, _assessment uuid, _title text, _detail text, _owner uuid, _due date) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_action(_id uuid, _site uuid, _assessment uuid, _title text, _detail text, _owner uuid, _due date) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_action(_id uuid, _site uuid, _assessment uuid, _title text, _detail text, _owner uuid, _due date) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_action(_id uuid, _site uuid, _assessment uuid, _title text, _detail text, _owner uuid, _due date) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_assessment(_id uuid, _site uuid, _results uuid[], _likelihood integer, _consequence integer, _final_level text, _override_reason text, _factors jsonb, _rationale text, _reason text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_assessment(_id uuid, _site uuid, _results uuid[], _likelihood integer, _consequence integer, _final_level text, _override_reason text, _factors jsonb, _rationale text, _reason text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_assessment(_id uuid, _site uuid, _results uuid[], _likelihood integer, _consequence integer, _final_level text, _override_reason text, _factors jsonb, _rationale text, _reason text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_assessment(_id uuid, _site uuid, _results uuid[], _likelihood integer, _consequence integer, _final_level text, _override_reason text, _factors jsonb, _rationale text, _reason text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_assessment(_id uuid, _site uuid, _results uuid[], _likelihood integer, _consequence integer, _final_level text, _override_reason text, _factors jsonb, _rationale text, _reason text) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_council_taxon(_id uuid, _ws uuid, _scientific text, _common text, _active boolean); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_council_taxon(_id uuid, _ws uuid, _scientific text, _common text, _active boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_council_taxon(_id uuid, _ws uuid, _scientific text, _common text, _active boolean) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_council_taxon(_id uuid, _ws uuid, _scientific text, _common text, _active boolean) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_council_taxon(_id uuid, _ws uuid, _scientific text, _common text, _active boolean) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_council_trap_type(_id uuid, _ws uuid, _name text, _description text, _active boolean); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_council_trap_type(_id uuid, _ws uuid, _name text, _description text, _active boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_council_trap_type(_id uuid, _ws uuid, _name text, _description text, _active boolean) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_council_trap_type(_id uuid, _ws uuid, _name text, _description text, _active boolean) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_council_trap_type(_id uuid, _ws uuid, _name text, _description text, _active boolean) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_external_ref(_id uuid, _record_type text, _record_id uuid, _system text, _external_id text, _note text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_external_ref(_id uuid, _record_type text, _record_id uuid, _system text, _external_id text, _note text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_external_ref(_id uuid, _record_type text, _record_id uuid, _system text, _external_id text, _note text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_external_ref(_id uuid, _record_type text, _record_id uuid, _system text, _external_id text, _note text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_external_ref(_id uuid, _record_type text, _record_id uuid, _system text, _external_id text, _note text) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_incursion_task(_id uuid, _incursion uuid, _step text, _title text, _detail text, _owner uuid, _due date); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_incursion_task(_id uuid, _incursion uuid, _step text, _title text, _detail text, _owner uuid, _due date) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_incursion_task(_id uuid, _incursion uuid, _step text, _title text, _detail text, _owner uuid, _due date) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_incursion_task(_id uuid, _incursion uuid, _step text, _title text, _detail text, _owner uuid, _due date) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_incursion_task(_id uuid, _incursion uuid, _step text, _title text, _detail text, _owner uuid, _due date) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_library_note(_id uuid, _ws uuid, _kind text, _subject uuid, _note text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_library_note(_id uuid, _ws uuid, _kind text, _subject uuid, _note text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_library_note(_id uuid, _ws uuid, _kind text, _subject uuid, _note text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_library_note(_id uuid, _ws uuid, _kind text, _subject uuid, _note text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_library_note(_id uuid, _ws uuid, _kind text, _subject uuid, _note text) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_notify_contact(_id uuid, _ws uuid, _name text, _organisation text, _kind text, _detail text, _active boolean); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_notify_contact(_id uuid, _ws uuid, _name text, _organisation text, _kind text, _detail text, _active boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_notify_contact(_id uuid, _ws uuid, _name text, _organisation text, _kind text, _detail text, _active boolean) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_notify_contact(_id uuid, _ws uuid, _name text, _organisation text, _kind text, _detail text, _active boolean) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_notify_contact(_id uuid, _ws uuid, _name text, _organisation text, _kind text, _detail text, _active boolean) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_programme(_id uuid, _ws uuid, _name text, _description text, _status text, _starts date, _ends date, _teams uuid[]); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_programme(_id uuid, _ws uuid, _name text, _description text, _status text, _starts date, _ends date, _teams uuid[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_programme(_id uuid, _ws uuid, _name text, _description text, _status text, _starts date, _ends date, _teams uuid[]) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_programme(_id uuid, _ws uuid, _name text, _description text, _status text, _starts date, _ends date, _teams uuid[]) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_programme(_id uuid, _ws uuid, _name text, _description text, _status text, _starts date, _ends date, _teams uuid[]) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_result(_id uuid, _sample uuid, _status text, _taxon uuid, _council_taxon uuid, _quantity numeric, _unit text, _method text, _identified_by text, _laboratory text, _lab_reference text, _result_date date, _uncertainty text, _reason text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_result(_id uuid, _sample uuid, _status text, _taxon uuid, _council_taxon uuid, _quantity numeric, _unit text, _method text, _identified_by text, _laboratory text, _lab_reference text, _result_date date, _uncertainty text, _reason text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_result(_id uuid, _sample uuid, _status text, _taxon uuid, _council_taxon uuid, _quantity numeric, _unit text, _method text, _identified_by text, _laboratory text, _lab_reference text, _result_date date, _uncertainty text, _reason text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_result(_id uuid, _sample uuid, _status text, _taxon uuid, _council_taxon uuid, _quantity numeric, _unit text, _method text, _identified_by text, _laboratory text, _lab_reference text, _result_date date, _uncertainty text, _reason text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_result(_id uuid, _sample uuid, _status text, _taxon uuid, _council_taxon uuid, _quantity numeric, _unit text, _method text, _identified_by text, _laboratory text, _lab_reference text, _result_date date, _uncertainty text, _reason text) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_site(_id uuid, _ws uuid, _name text, _line_1 text, _line_2 text, _town text, _postcode text, _uprn text, _latitude double precision, _longitude double precision, _description text, _access text, _status text, _programmes uuid[]); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_site(_id uuid, _ws uuid, _name text, _line_1 text, _line_2 text, _town text, _postcode text, _uprn text, _latitude double precision, _longitude double precision, _description text, _access text, _status text, _programmes uuid[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_site(_id uuid, _ws uuid, _name text, _line_1 text, _line_2 text, _town text, _postcode text, _uprn text, _latitude double precision, _longitude double precision, _description text, _access text, _status text, _programmes uuid[]) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_site(_id uuid, _ws uuid, _name text, _line_1 text, _line_2 text, _town text, _postcode text, _uprn text, _latitude double precision, _longitude double precision, _description text, _access text, _status text, _programmes uuid[]) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_site(_id uuid, _ws uuid, _name text, _line_1 text, _line_2 text, _town text, _postcode text, _uprn text, _latitude double precision, _longitude double precision, _description text, _access text, _status text, _programmes uuid[]) TO service_role;
 
-
---
--- Name: FUNCTION vv_save_trap(_id uuid, _ws uuid, _identifier text, _trap_type uuid, _council_trap_type uuid, _status text, _notes text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_save_trap(_id uuid, _ws uuid, _identifier text, _trap_type uuid, _council_trap_type uuid, _status text, _notes text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_save_trap(_id uuid, _ws uuid, _identifier text, _trap_type uuid, _council_trap_type uuid, _status text, _notes text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_save_trap(_id uuid, _ws uuid, _identifier text, _trap_type uuid, _council_trap_type uuid, _status text, _notes text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_save_trap(_id uuid, _ws uuid, _identifier text, _trap_type uuid, _council_trap_type uuid, _status text, _notes text) TO service_role;
 
-
---
--- Name: FUNCTION vv_set_action_status(_id uuid, _status text, _note text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_set_action_status(_id uuid, _status text, _note text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_set_action_status(_id uuid, _status text, _note text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_set_action_status(_id uuid, _status text, _note text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_set_action_status(_id uuid, _status text, _note text) TO service_role;
 
-
---
--- Name: FUNCTION vv_set_incursion_step(_id uuid, _step text, _status text, _note text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_set_incursion_step(_id uuid, _step text, _status text, _note text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_set_incursion_step(_id uuid, _step text, _status text, _note text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_set_incursion_step(_id uuid, _step text, _status text, _note text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_set_incursion_step(_id uuid, _step text, _status text, _note text) TO service_role;
 
-
---
--- Name: FUNCTION vv_set_response_area(_id uuid, _lat numeric, _lon numeric, _radius_m numeric, _reason text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_set_response_area(_id uuid, _lat numeric, _lon numeric, _radius_m numeric, _reason text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_set_response_area(_id uuid, _lat numeric, _lon numeric, _radius_m numeric, _reason text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_set_response_area(_id uuid, _lat numeric, _lon numeric, _radius_m numeric, _reason text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_set_response_area(_id uuid, _lat numeric, _lon numeric, _radius_m numeric, _reason text) TO service_role;
 
-
---
--- Name: FUNCTION vv_stand_down(_id uuid, _incursion uuid, _decided_at timestamp with time zone, _rationale text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_stand_down(_id uuid, _incursion uuid, _decided_at timestamp with time zone, _rationale text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_stand_down(_id uuid, _incursion uuid, _decided_at timestamp with time zone, _rationale text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_stand_down(_id uuid, _incursion uuid, _decided_at timestamp with time zone, _rationale text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_stand_down(_id uuid, _incursion uuid, _decided_at timestamp with time zone, _rationale text) TO service_role;
 
-
---
--- Name: FUNCTION vv_update_incursion(_id uuid, _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text, _reason text); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_update_incursion(_id uuid, _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text, _reason text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_update_incursion(_id uuid, _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text, _reason text) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_update_incursion(_id uuid, _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text, _reason text) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_update_incursion(_id uuid, _title text, _taxon uuid, _council_taxon uuid, _lead uuid, _status text, _reason text) TO service_role;
 
-
---
--- Name: FUNCTION vv_visit_schedule(_ws uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.vv_visit_schedule(_ws uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.vv_visit_schedule(_ws uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.vv_visit_schedule(_ws uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.vv_visit_schedule(_ws uuid) TO service_role;
 
-
---
--- Name: FUNCTION write_audit(_ws uuid, _action text, _target uuid, _detail jsonb); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.write_audit(_ws uuid, _action text, _target uuid, _detail jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.write_audit(_ws uuid, _action text, _target uuid, _detail jsonb) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.write_audit(_ws uuid, _action text, _target uuid, _detail jsonb) TO service_role;
 
-
---
--- Name: FUNCTION ws_role_of(_ws uuid); Type: ACL; Schema: public; Owner: -
---
-
-REVOKE ALL ON FUNCTION public.ws_role_of(_ws uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ws_role_of(_ws uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.ws_role_of(_ws uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.ws_role_of(_ws uuid) TO service_role;
-
-
---
--- Name: TABLE audit_events; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.audit_events TO authenticated;
 GRANT ALL ON TABLE public.audit_events TO service_role;
 
-
---
--- Name: SEQUENCE audit_events_id_seq; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT,USAGE ON SEQUENCE public.audit_events_id_seq TO service_role;
-
-
---
--- Name: TABLE content_roles; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.content_roles TO authenticated;
 GRANT ALL ON TABLE public.content_roles TO service_role;
 
-
---
--- Name: TABLE invitation_emails; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.invitation_emails TO authenticated;
 GRANT ALL ON TABLE public.invitation_emails TO service_role;
-
-
---
--- Name: TABLE platform_admins; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.platform_admins TO authenticated;
 GRANT ALL ON TABLE public.platform_admins TO service_role;
 
-
---
--- Name: TABLE product_access; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.product_access TO authenticated;
 GRANT ALL ON TABLE public.product_access TO service_role;
-
-
---
--- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.profiles TO authenticated;
 GRANT ALL ON TABLE public.profiles TO service_role;
 
-
---
--- Name: COLUMN profiles.display_name; Type: ACL; Schema: public; Owner: -
---
-
 GRANT UPDATE(display_name) ON TABLE public.profiles TO authenticated;
-
-
---
--- Name: TABLE team_members; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.team_members TO authenticated;
 GRANT ALL ON TABLE public.team_members TO service_role;
 
-
---
--- Name: TABLE teams; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.teams TO authenticated;
 GRANT ALL ON TABLE public.teams TO service_role;
-
-
---
--- Name: TABLE vv_actions; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_actions TO authenticated;
 GRANT ALL ON TABLE public.vv_actions TO service_role;
 
-
---
--- Name: TABLE vv_assessment_results; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_assessment_results TO authenticated;
 GRANT ALL ON TABLE public.vv_assessment_results TO service_role;
-
-
---
--- Name: TABLE vv_assessment_versions; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_assessment_versions TO authenticated;
 GRANT ALL ON TABLE public.vv_assessment_versions TO service_role;
 
-
---
--- Name: TABLE vv_assessments; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_assessments TO authenticated;
 GRANT ALL ON TABLE public.vv_assessments TO service_role;
-
-
---
--- Name: TABLE vv_attachment_events; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_attachment_events TO authenticated;
 GRANT ALL ON TABLE public.vv_attachment_events TO service_role;
 
-
---
--- Name: TABLE vv_attachments; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_attachments TO authenticated;
 GRANT ALL ON TABLE public.vv_attachments TO service_role;
-
-
---
--- Name: TABLE vv_council_taxa; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_council_taxa TO authenticated;
 GRANT ALL ON TABLE public.vv_council_taxa TO service_role;
 
-
---
--- Name: TABLE vv_council_trap_types; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_council_trap_types TO authenticated;
 GRANT ALL ON TABLE public.vv_council_trap_types TO service_role;
-
-
---
--- Name: TABLE vv_deployments; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_deployments TO authenticated;
 GRANT ALL ON TABLE public.vv_deployments TO service_role;
 
-
---
--- Name: TABLE vv_events; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_events TO authenticated;
 GRANT ALL ON TABLE public.vv_events TO service_role;
-
-
---
--- Name: TABLE vv_exports; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_exports TO authenticated;
 GRANT ALL ON TABLE public.vv_exports TO service_role;
 
-
---
--- Name: TABLE vv_external_refs; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_external_refs TO authenticated;
 GRANT ALL ON TABLE public.vv_external_refs TO service_role;
-
-
---
--- Name: TABLE vv_incursion_findings; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_incursion_findings TO authenticated;
 GRANT ALL ON TABLE public.vv_incursion_findings TO service_role;
 
-
---
--- Name: TABLE vv_incursion_sites; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_incursion_sites TO authenticated;
 GRANT ALL ON TABLE public.vv_incursion_sites TO service_role;
-
-
---
--- Name: TABLE vv_incursion_steps; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_incursion_steps TO authenticated;
 GRANT ALL ON TABLE public.vv_incursion_steps TO service_role;
 
-
---
--- Name: TABLE vv_incursions; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_incursions TO authenticated;
 GRANT ALL ON TABLE public.vv_incursions TO service_role;
-
-
---
--- Name: TABLE vv_library_images; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_library_images TO authenticated;
 GRANT ALL ON TABLE public.vv_library_images TO service_role;
 
-
---
--- Name: TABLE vv_library_notes; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_library_notes TO authenticated;
 GRANT ALL ON TABLE public.vv_library_notes TO service_role;
-
-
---
--- Name: TABLE vv_library_versions; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_library_versions TO authenticated;
 GRANT ALL ON TABLE public.vv_library_versions TO service_role;
 
-
---
--- Name: TABLE vv_notifications; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_notifications TO authenticated;
 GRANT ALL ON TABLE public.vv_notifications TO service_role;
-
-
---
--- Name: TABLE vv_notify_contacts; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_notify_contacts TO authenticated;
 GRANT ALL ON TABLE public.vv_notify_contacts TO service_role;
 
-
---
--- Name: TABLE vv_programme_teams; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_programme_teams TO authenticated;
 GRANT ALL ON TABLE public.vv_programme_teams TO service_role;
-
-
---
--- Name: TABLE vv_programmes; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_programmes TO authenticated;
 GRANT ALL ON TABLE public.vv_programmes TO service_role;
 
-
---
--- Name: TABLE vv_result_versions; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_result_versions TO authenticated;
 GRANT ALL ON TABLE public.vv_result_versions TO service_role;
-
-
---
--- Name: TABLE vv_results; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_results TO authenticated;
 GRANT ALL ON TABLE public.vv_results TO service_role;
 
-
---
--- Name: TABLE vv_samples; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_samples TO authenticated;
 GRANT ALL ON TABLE public.vv_samples TO service_role;
-
-
---
--- Name: TABLE vv_site_programmes; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_site_programmes TO authenticated;
 GRANT ALL ON TABLE public.vv_site_programmes TO service_role;
 
-
---
--- Name: TABLE vv_sites; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_sites TO authenticated;
 GRANT ALL ON TABLE public.vv_sites TO service_role;
-
-
---
--- Name: TABLE vv_stand_downs; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_stand_downs TO authenticated;
 GRANT ALL ON TABLE public.vv_stand_downs TO service_role;
 
-
---
--- Name: TABLE vv_taxa; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_taxa TO authenticated;
 GRANT ALL ON TABLE public.vv_taxa TO service_role;
-
-
---
--- Name: TABLE vv_trap_types; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_trap_types TO authenticated;
 GRANT ALL ON TABLE public.vv_trap_types TO service_role;
 
-
---
--- Name: TABLE vv_traps; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_traps TO authenticated;
 GRANT ALL ON TABLE public.vv_traps TO service_role;
-
-
---
--- Name: TABLE vv_visits; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.vv_visits TO authenticated;
 GRANT ALL ON TABLE public.vv_visits TO service_role;
 
-
---
--- Name: TABLE vv_workspace_settings; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.vv_workspace_settings TO authenticated;
 GRANT ALL ON TABLE public.vv_workspace_settings TO service_role;
-
-
---
--- Name: TABLE workspace_invitations; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.workspace_invitations TO authenticated;
 GRANT ALL ON TABLE public.workspace_invitations TO service_role;
 
-
---
--- Name: TABLE workspace_members; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.workspace_members TO authenticated;
 GRANT ALL ON TABLE public.workspace_members TO service_role;
-
-
---
--- Name: TABLE workspace_product_events; Type: ACL; Schema: public; Owner: -
---
 
 GRANT SELECT ON TABLE public.workspace_product_events TO authenticated;
 GRANT ALL ON TABLE public.workspace_product_events TO service_role;
 
-
---
--- Name: TABLE workspace_products; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.workspace_products TO authenticated;
 GRANT ALL ON TABLE public.workspace_products TO service_role;
 
-
---
--- Name: TABLE workspaces; Type: ACL; Schema: public; Owner: -
---
-
 GRANT SELECT ON TABLE public.workspaces TO authenticated;
 GRANT ALL ON TABLE public.workspaces TO service_role;
-
-
---
--- PostgreSQL database dump complete
---
-
-
 
 -- ---------------------------------------------------------------------
 -- Re-stated without Investigations dependencies
@@ -6500,7 +3643,7 @@ begin
   end if;
   return ws;
 end $$;
-REVOKE ALL ON FUNCTION public.ensure_personal_workspace() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ensure_personal_workspace() FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.ensure_personal_workspace() TO authenticated;
 GRANT ALL ON FUNCTION public.ensure_personal_workspace() TO service_role;
 
@@ -6515,7 +3658,7 @@ begin
   insert into public.audit_events (workspace_id, actor_id, action, target_id) values (ws, null, 'workspace.provisioned', _owner);
   return ws;
 end $$;
-REVOKE ALL ON FUNCTION public.provision_organisation(_name text, _owner uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.provision_organisation(_name text, _owner uuid) FROM PUBLIC, anon, authenticated;
 GRANT ALL ON FUNCTION public.provision_organisation(_name text, _owner uuid) TO service_role;
 
 -- ---------------------------------------------------------------------
@@ -6528,7 +3671,7 @@ create function public.is_org_admin(_ws uuid) returns boolean
   language sql stable security definer set search_path = '' as $$
   select public.has_ws_role(_ws, array['owner', 'admin']::public.workspace_role[])
 $$;
-revoke all on function public.is_org_admin(_ws uuid) from public;
+revoke all on function public.is_org_admin(_ws uuid) from public, anon, authenticated;
 grant execute on function public.is_org_admin(_ws uuid) to authenticated, service_role;
 
 create function public.create_team(_ws uuid, _name text) returns uuid
@@ -6577,10 +3720,10 @@ begin
   perform public.write_audit(ws, 'team.member_removed', _team, jsonb_build_object('user_id', _user));
 end $$;
 
-revoke all on function public.create_team(_ws uuid, _name text) from public;
-revoke all on function public.update_team(_team uuid, _name text) from public;
-revoke all on function public.add_team_member(_team uuid, _user uuid) from public;
-revoke all on function public.remove_team_member(_team uuid, _user uuid) from public;
+revoke all on function public.create_team(_ws uuid, _name text) from public, anon, authenticated;
+revoke all on function public.update_team(_team uuid, _name text) from public, anon, authenticated;
+revoke all on function public.add_team_member(_team uuid, _user uuid) from public, anon, authenticated;
+revoke all on function public.remove_team_member(_team uuid, _user uuid) from public, anon, authenticated;
 grant execute on function public.create_team(_ws uuid, _name text) to authenticated, service_role;
 grant execute on function public.update_team(_team uuid, _name text) to authenticated, service_role;
 grant execute on function public.add_team_member(_team uuid, _user uuid) to authenticated, service_role;
@@ -6602,7 +3745,7 @@ begin
   on conflict (workspace_id, user_id, product) do update set level = excluded.level, updated_at = now(), updated_by = auth.uid();
   perform public.write_audit(_ws, 'product.access_set', _user, jsonb_build_object('product', _product, 'level', _level));
 end $$;
-revoke all on function public.set_product_access(_ws uuid, _user uuid, _product text, _level text) from public;
+revoke all on function public.set_product_access(_ws uuid, _user uuid, _product text, _level text) from public, anon, authenticated;
 grant execute on function public.set_product_access(_ws uuid, _user uuid, _product text, _level text) to authenticated, service_role;
 
 -- ---------------------------------------------------------------------

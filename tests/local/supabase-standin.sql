@@ -1,6 +1,6 @@
 -- Minimal stand-in for the parts of Supabase the migrations and pgTAP tests rely on.
 -- For a THROWAWAY local PostgreSQL 17 only (see run-db-tests.ps1). It isn't real
--- Supabase: no GoTrue, PostgREST, Supabase default privileges or event triggers.
+-- Supabase: no GoTrue, PostgREST or event triggers.
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon')          then create role anon nologin; end if;
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
@@ -23,6 +23,11 @@ $$;
 
 grant usage on schema public, auth, extensions to anon, authenticated, service_role;
 grant execute on function auth.uid() to anon, authenticated, service_role;
+-- Like Supabase: everything new in public is granted to these roles by default,
+-- so the tests catch any object a migration forgets to lock down.
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 
 -- Minimal stand-in for Supabase Storage tables (bucket config + object rows),
 -- enough to test the evidence upload rules. Real Storage also checks file size
