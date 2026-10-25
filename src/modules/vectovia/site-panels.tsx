@@ -124,10 +124,8 @@ function BoundaryForm({ ws, site, areas, onDone }: { ws: string; site: Site; are
             {(Object.keys(siteTypeLabels) as SiteType[]).map((t) => <option key={t} value={t}>{siteTypeLabels[t]}</option>)}
           </select>
         </Field>
-        <Field id="bf-zone" label="Zone around the site (metres)" hint={poe ? "Points of entry need at least 400 m around their operational areas." : "0 to 5,000 m."}>
-          <Input id="bf-zone" className="bg-background" inputMode="numeric" value={zone} onChange={(e) => setZone(e.target.value.replace(/\D/g, ""))} />
-        </Field>
       </div>
+      <ZoneSlider poe={poe} value={zone} onChange={setZone} />
       {!zoneOk ? <p role="alert" className="text-sm text-primary">{poe ? "Enter a zone of 400 to 5,000 metres." : "Enter a zone of 0 to 5,000 metres."}</p> : null}
       <Field id="bf-why" label="Why this site is monitored (optional)" hint="For example: international freight, modelled climate risk, previous detection.">
         <Input id="bf-why" className="bg-background" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -146,6 +144,41 @@ function BoundaryForm({ ws, site, areas, onDone }: { ws: string; site: Site; are
         <button type="button" className={btn} onClick={onDone}>Cancel</button>
       </div>
     </form>
+  );
+}
+
+/** Zone width: a slider with the 400 m best-practice point marked, plus a box for exact values up to 5,000 m. */
+const BEST_M = 400, SLIDER_MAX = 2000;
+export function ZoneSlider({ poe, value, onChange }: { poe: boolean; value: string; onChange: (v: string) => void }) {
+  const min = poe ? BEST_M : 0;
+  const n = Number(value) || 0;
+  const at = ((BEST_M - min) / (SLIDER_MAX - min)) * 100;
+  const where = n === BEST_M ? "At best practice." : n < BEST_M ? "Smaller than best practice." : "Larger than best practice.";
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-sm font-medium text-primary">Zone around the site and its areas</legend>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-56 flex-1 pb-9">
+          <input id="bf-zone-range" type="range" min={min} max={SLIDER_MAX} step={25} value={Math.min(Math.max(n, min), SLIDER_MAX)}
+            aria-label="Zone width in metres" aria-describedby="bf-zone-best" aria-valuetext={`${n} metres. ${where}`}
+            onChange={(e) => onChange(e.target.value)} className="w-full accent-[var(--signal-teal)]" />
+          {/* The 400 m mark: a tick on the track and a label, so the recommended width is always visible. */}
+          <span aria-hidden="true" className="absolute top-0 h-5 w-0.5 bg-primary" style={{ left: `calc(${at}% + ${(0.5 - at / 100) * 16}px)` }} />
+          <span id="bf-zone-best" className="absolute top-6 whitespace-nowrap rounded border border-primary bg-background px-1.5 py-0.5 text-[11px] font-semibold text-primary"
+            style={{ left: `calc(${at}% + ${(0.5 - at / 100) * 16}px)`, transform: at < 10 ? "none" : "translateX(-50%)" }}>
+            ▲ 400 m: best practice{poe ? " and the IHR minimum" : ""}
+          </span>
+        </div>
+        <label className="flex items-center gap-1 text-sm text-primary">
+          <span className="sr-only">Zone width (metres)</span>
+          <Input id="bf-zone" className="w-24 bg-background" inputMode="numeric" value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))} /> m
+        </label>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {where} {poe ? "Points of entry keep at least 400 m around their operational areas (IHR Annex 5). Widen it where the risk assessment calls for it."
+          : "400 m is the recommended zone. Make it smaller or larger to suit the site (up to 5,000 m; type a value over 2,000 in the box)."}
+      </p>
+    </fieldset>
   );
 }
 
