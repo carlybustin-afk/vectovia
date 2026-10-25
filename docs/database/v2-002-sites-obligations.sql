@@ -2,7 +2,7 @@
 -- VECTOVIA — v2-002: sites (type, boundary, zone, operational areas, shared
 -- sites) and obligation sets (national, reviewed, versioned) with site
 -- compliance. Design: docs/vectovia/design-v2.md §3–5, build stage 2.
--- STATUS: PROPOSED FOR OWNER REVIEW. NOT APPLIED. Target: vectovia-mvp (widvaahmcqanxezfhjqd).
+-- STATUS: APPROVED BY THE OWNER AND APPLIED 2026-10-26 to vectovia-mvp (widvaahmcqanxezfhjqd).
 --
 -- Rules kept from v2-001: client-generated ids and idempotent writes; every
 -- write through a checked function; history in vv_events; nothing deleted;

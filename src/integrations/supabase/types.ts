@@ -1428,6 +1428,142 @@ export type Database = {
           },
         ]
       }
+      vv_obligation_requirements: {
+        Row: {
+          check_kind: string
+          evidence: string | null
+          frequency: string | null
+          id: string
+          key: string
+          mandatory: boolean
+          sort_order: number
+          source_ref: string | null
+          title: string
+          version_id: string
+          what: string
+        }
+        Insert: {
+          check_kind?: string
+          evidence?: string | null
+          frequency?: string | null
+          id?: string
+          key: string
+          mandatory?: boolean
+          sort_order: number
+          source_ref?: string | null
+          title: string
+          version_id: string
+          what: string
+        }
+        Update: {
+          check_kind?: string
+          evidence?: string | null
+          frequency?: string | null
+          id?: string
+          key?: string
+          mandatory?: boolean
+          sort_order?: number
+          source_ref?: string | null
+          title?: string
+          version_id?: string
+          what?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_obligation_requirements_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "vv_obligation_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vv_obligation_sets: {
+        Row: {
+          applies_to: string[]
+          framework: string
+          id: string
+          jurisdiction: string
+          key: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          applies_to?: string[]
+          framework: string
+          id?: string
+          jurisdiction: string
+          key: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          applies_to?: string[]
+          framework?: string
+          id?: string
+          jurisdiction?: string
+          key?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      vv_obligation_versions: {
+        Row: {
+          created_at: string
+          id: string
+          loaded_by: string | null
+          published_at: string | null
+          publisher_id: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          set_id: string
+          sources: Json
+          status: Database["public"]["Enums"]["kp_status"]
+          summary: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          loaded_by?: string | null
+          published_at?: string | null
+          publisher_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          set_id: string
+          sources?: Json
+          status?: Database["public"]["Enums"]["kp_status"]
+          summary: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          loaded_by?: string | null
+          published_at?: string | null
+          publisher_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          set_id?: string
+          sources?: Json
+          status?: Database["public"]["Enums"]["kp_status"]
+          summary?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_obligation_versions_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "vv_obligation_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vv_programme_teams: {
         Row: {
           programme_id: string
@@ -1504,6 +1640,87 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "vv_programmes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vv_requirement_assessments: {
+        Row: {
+          assessed_at: string
+          assessed_by: string
+          assessed_role: string
+          evidence_attachment_id: string | null
+          id: string
+          note: string
+          requirement_id: string
+          review_by: string | null
+          site_id: string
+          site_obligation_id: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          assessed_at?: string
+          assessed_by: string
+          assessed_role: string
+          evidence_attachment_id?: string | null
+          id: string
+          note: string
+          requirement_id: string
+          review_by?: string | null
+          site_id: string
+          site_obligation_id: string
+          status: string
+          workspace_id: string
+        }
+        Update: {
+          assessed_at?: string
+          assessed_by?: string
+          assessed_role?: string
+          evidence_attachment_id?: string | null
+          id?: string
+          note?: string
+          requirement_id?: string
+          review_by?: string | null
+          site_id?: string
+          site_obligation_id?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_requirement_assessments_evidence_attachment_id_workspac_fkey"
+            columns: ["evidence_attachment_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "vv_attachments"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "vv_requirement_assessments_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "vv_obligation_requirements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vv_requirement_assessments_site_id_workspace_id_fkey"
+            columns: ["site_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "vv_sites"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "vv_requirement_assessments_site_obligation_id_workspace_id_fkey"
+            columns: ["site_obligation_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "vv_site_obligations"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "vv_requirement_assessments_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1709,6 +1926,226 @@ export type Database = {
           },
         ]
       }
+      vv_site_areas: {
+        Row: {
+          boundary: Json | null
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          name: string
+          removed_at: string | null
+          removed_by: string | null
+          removed_reason: string | null
+          site_id: string
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          boundary?: Json | null
+          created_at?: string
+          created_by: string
+          id: string
+          kind: string
+          name: string
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_reason?: string | null
+          site_id: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          boundary?: Json | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          name?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_reason?: string | null
+          site_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_site_areas_site_id_workspace_id_fkey"
+            columns: ["site_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "vv_sites"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "vv_site_areas_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vv_site_group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          joined_by: string
+          left_at: string | null
+          left_by: string | null
+          left_reason: string | null
+          site_id: string
+          workspace_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          joined_by: string
+          left_at?: string | null
+          left_by?: string | null
+          left_reason?: string | null
+          site_id: string
+          workspace_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          joined_by?: string
+          left_at?: string | null
+          left_by?: string | null
+          left_reason?: string | null
+          site_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_site_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "vv_site_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vv_site_group_members_site_id_workspace_id_fkey"
+            columns: ["site_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "vv_sites"
+            referencedColumns: ["id", "workspace_id"]
+          },
+        ]
+      }
+      vv_site_groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          id: string
+          lead_site_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          ended_at?: string | null
+          id?: string
+          lead_site_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          lead_site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_site_groups_lead_site_id_fkey"
+            columns: ["lead_site_id"]
+            isOneToOne: true
+            referencedRelation: "vv_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vv_site_obligations: {
+        Row: {
+          adopted_at: string
+          adopted_by: string
+          id: string
+          removed_at: string | null
+          removed_by: string | null
+          removed_reason: string | null
+          set_id: string
+          site_id: string
+          updated_at: string | null
+          updated_by: string | null
+          version_id: string
+          workspace_id: string
+        }
+        Insert: {
+          adopted_at?: string
+          adopted_by: string
+          id: string
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_reason?: string | null
+          set_id: string
+          site_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+          version_id: string
+          workspace_id: string
+        }
+        Update: {
+          adopted_at?: string
+          adopted_by?: string
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_reason?: string | null
+          set_id?: string
+          site_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          version_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_site_obligations_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "vv_obligation_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vv_site_obligations_site_id_workspace_id_fkey"
+            columns: ["site_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "vv_sites"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "vv_site_obligations_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "vv_obligation_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vv_site_obligations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vv_site_programmes: {
         Row: {
           programme_id: string
@@ -1742,9 +2179,64 @@ export type Database = {
           },
         ]
       }
+      vv_site_share_codes: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          group_id: string
+          id: string
+          token_hash: string
+          used_at: string | null
+          used_by: string | null
+          used_site_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          group_id: string
+          id?: string
+          token_hash: string
+          used_at?: string | null
+          used_by?: string | null
+          used_site_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          group_id?: string
+          id?: string
+          token_hash?: string
+          used_at?: string | null
+          used_by?: string | null
+          used_site_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_site_share_codes_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "vv_site_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vv_site_share_codes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vv_sites: {
         Row: {
           access_instructions: string | null
+          boundary: Json | null
           created_at: string
           created_by: string
           id: string
@@ -1756,15 +2248,19 @@ export type Database = {
           name: string
           postcode: string | null
           reference: string
+          risk_reason: string | null
+          site_type: string
           status: string
           town: string | null
           updated_at: string
           updated_by: string | null
           uprn: string | null
           workspace_id: string
+          zone_m: number
         }
         Insert: {
           access_instructions?: string | null
+          boundary?: Json | null
           created_at?: string
           created_by: string
           id: string
@@ -1776,15 +2272,19 @@ export type Database = {
           name: string
           postcode?: string | null
           reference: string
+          risk_reason?: string | null
+          site_type?: string
           status?: string
           town?: string | null
           updated_at?: string
           updated_by?: string | null
           uprn?: string | null
           workspace_id: string
+          zone_m?: number
         }
         Update: {
           access_instructions?: string | null
+          boundary?: Json | null
           created_at?: string
           created_by?: string
           id?: string
@@ -1796,12 +2296,15 @@ export type Database = {
           name?: string
           postcode?: string | null
           reference?: string
+          risk_reason?: string | null
+          site_type?: string
           status?: string
           town?: string | null
           updated_at?: string
           updated_by?: string | null
           uprn?: string | null
           workspace_id?: string
+          zone_m?: number
         }
         Relationships: [
           {
@@ -2410,6 +2913,22 @@ export type Database = {
         Args: { _name: string; _team: string }
         Returns: undefined
       }
+      vv_adopt_obligation_set: {
+        Args: { _id: string; _set_key: string; _site: string }
+        Returns: undefined
+      }
+      vv_assess_requirement: {
+        Args: {
+          _attachment: string
+          _id: string
+          _note: string
+          _requirement_key: string
+          _review_by: string
+          _site_obligation: string
+          _status: string
+        }
+        Returns: undefined
+      }
       vv_can_read_attachment: { Args: { _id: string }; Returns: boolean }
       vv_can_run_incursion: { Args: { _incursion: string }; Returns: boolean }
       vv_can_see_incursion: { Args: { _incursion: string }; Returns: boolean }
@@ -2448,6 +2967,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      vv_create_site_share: { Args: { _site: string }; Returns: string }
       vv_deploy_trap: {
         Args: {
           _id: string
@@ -2498,6 +3018,18 @@ export type Database = {
         }[]
       }
       vv_has: { Args: { _levels: string[]; _ws: string }; Returns: boolean }
+      vv_in_zone: {
+        Args: { _g: Json; _lat: number; _lon: number; _zone_m: number }
+        Returns: boolean
+      }
+      vv_join_shared_site: {
+        Args: { _code: string; _site: string }
+        Returns: undefined
+      }
+      vv_leave_shared_site: {
+        Args: { _reason: string; _site: string }
+        Returns: undefined
+      }
       vv_lib_add_image: {
         Args: {
           _caption: string
@@ -2566,6 +3098,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      vv_obl_publish: { Args: { _version: string }; Returns: undefined }
+      vv_obl_review: {
+        Args: { _approve: boolean; _note: string; _version: string }
+        Returns: undefined
+      }
       vv_open_incursion: {
         Args: {
           _council_taxon: string
@@ -2578,6 +3115,10 @@ export type Database = {
           _title: string
         }
         Returns: string
+      }
+      vv_point_in_site_zone: {
+        Args: { _lat: number; _lon: number; _site: string }
+        Returns: boolean
       }
       vv_record_notification: {
         Args: {
@@ -2633,6 +3174,14 @@ export type Database = {
         Returns: string
       }
       vv_remove_external_ref: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
+      vv_remove_site_area: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
+      vv_remove_site_obligation: {
         Args: { _id: string; _reason: string }
         Returns: undefined
       }
@@ -2788,6 +3337,26 @@ export type Database = {
         }
         Returns: string
       }
+      vv_save_site_area: {
+        Args: {
+          _boundary: Json
+          _id: string
+          _kind: string
+          _name: string
+          _site: string
+        }
+        Returns: undefined
+      }
+      vv_save_site_geometry: {
+        Args: {
+          _boundary: Json
+          _risk_reason: string
+          _site: string
+          _site_type: string
+          _zone_m: number
+        }
+        Returns: undefined
+      }
       vv_save_trap: {
         Args: {
           _council_trap_type: string
@@ -2818,6 +3387,38 @@ export type Database = {
         }
         Returns: undefined
       }
+      vv_shared_site: {
+        Args: { _site: string }
+        Returns: {
+          areas: Json
+          boundary: Json
+          group_id: string
+          is_lead: boolean
+          is_you: boolean
+          organisation: string
+          site_name: string
+          site_type: string
+          zone_m: number
+        }[]
+      }
+      vv_site_compliance: {
+        Args: { _site: string }
+        Returns: {
+          assessed_at: string
+          check_kind: string
+          detail: string
+          mandatory: boolean
+          requirement_key: string
+          review_by: string
+          set_key: string
+          set_name: string
+          site_obligation_id: string
+          sort_order: number
+          status: string
+          title: string
+          version: number
+        }[]
+      }
       vv_stand_down: {
         Args: {
           _decided_at: string
@@ -2839,6 +3440,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      vv_valid_polygon: { Args: { _g: Json }; Returns: boolean }
       vv_visit_schedule: {
         Args: { _ws: string }
         Returns: {
