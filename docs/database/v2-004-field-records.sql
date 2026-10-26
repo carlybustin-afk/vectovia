@@ -7,7 +7,7 @@
 --   * Control actions (source reduction, larviciding, adulticiding); withdrawn with a reason, never deleted.
 --   * Invasive finds awaiting official identification, listed for follow-up.
 -- AI identification is not part of this stage (design stage 8; needs owner approval for the provider).
--- STATUS: PROPOSED FOR OWNER REVIEW. NOT APPLIED. Target: vectovia-mvp (widvaahmcqanxezfhjqd).
+-- STATUS: APPROVED BY THE OWNER AND APPLIED 2026-10-26 to vectovia-mvp (widvaahmcqanxezfhjqd).
 -- Rules as before: client-generated ids, retry-safe writes, checked functions only, history in
 -- vv_events, nothing deleted, organisations never see each other's records.
 -- =====================================================================
