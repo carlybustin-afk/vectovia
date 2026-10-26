@@ -56,17 +56,18 @@ export function ResultForm({ ws, sampleId, lists, current, resultId, onDone }: {
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${v.status === s ? "bg-primary text-primary-foreground" : "border border-border text-primary"}`}>{resultStatusLabels[s]}</button>
           ))}
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">Pending: sent for identification. Provisional: an early identification. Confirmed: final. Inconclusive: couldn't be identified.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Pending: sent for identification. Provisional: an early (field) identification. Confirmed: the official identification, for example from the lab report. Inconclusive: couldn't be identified. Negative: the target species was not found.</p>
+        {v.status === "provisional" && lists.taxa.find((t) => `s:${t.id}` === v.taxon)?.invasive ? <p role="status" className="mt-1 rounded border border-primary px-2 py-1 text-xs font-semibold text-primary">▲ Invasive species: this find is flagged until an official (confirmed) identification is recorded. Send the sample for official identification and attach the lab report.</p> : null}
       </fieldset>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field id="rf-t" label={v.status === "pending" ? "Species (if known)" : "Species"}>
-          <select id="rf-t" className={selectClass} value={v.taxon} onChange={(e) => set("taxon", e.target.value)}>
-            <option value="">{v.status === "pending" || v.status === "inconclusive" ? "Not identified" : "Choose a species"}</option>
+          <select id="rf-t" className={selectClass} value={v.status === "negative" ? "" : v.taxon} disabled={v.status === "negative"} onChange={(e) => set("taxon", e.target.value)}>
+            <option value="">{v.status === "negative" ? "None (negative)" : v.status === "pending" || v.status === "inconclusive" ? "Not identified" : "Choose a species"}</option>
             <optgroup label="Standard list">{lists.taxa.map((t) => <option key={t.id} value={`s:${t.id}`}>{t.scientific_name}{t.invasive ? " (invasive)" : ""}</option>)}</optgroup>
             {lists.councilTaxa.length ? <optgroup label="Your council's list">{lists.councilTaxa.filter((t) => t.active || `c:${t.id}` === v.taxon).map((t) => <option key={t.id} value={`c:${t.id}`}>{t.scientific_name}</option>)}</optgroup> : null}
           </select>
         </Field>
-        <Field id="rf-q" label="Quantity"><Input id="rf-q" type="number" min={0} step="any" value={v.quantity} disabled={v.unit === "presence"} onChange={(e) => set("quantity", e.target.value)} /></Field>
+        <Field id="rf-q" label="Quantity"><Input id="rf-q" type="number" min={0} step="any" value={v.status === "negative" ? "" : v.quantity} disabled={v.unit === "presence" || v.status === "negative"} onChange={(e) => set("quantity", e.target.value)} /></Field>
         <Field id="rf-u" label="Unit">
           <select id="rf-u" className={selectClass} value={v.unit} onChange={(e) => set("unit", e.target.value as Unit)}>
             {(Object.keys(unitLabels) as Unit[]).map((u) => <option key={u} value={u}>{unitLabels[u]}</option>)}

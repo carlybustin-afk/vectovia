@@ -55,7 +55,7 @@ function Results() {
                   <span className="font-semibold text-primary">{s.reference}</span>
                   <StatusTag strong={s.status === "awaiting_result"}>{s.status === "awaiting_result" ? "Awaiting results" : "Resulted"}</StatusTag>
                   <span className="text-xs text-muted-foreground">
-                    {methodLabels[s.method]} · {trap?.identifier ?? "trap"} at {site ? `${site.reference} · ${site.name}` : "site"} · collected {visit ? when(visit.occurred_at) : "—"}
+                    {methodLabels[s.method]} · {s.inspection_id ? "inspection" : trap?.identifier ?? "trap"} at {site ? `${site.reference} · ${site.name}` : "site"} · collected {visit ? when(visit.occurred_at) : when(s.recorded_at)}
                     {mine.length ? ` · ${mine.length} result${mine.length === 1 ? "" : "s"}` : ""}
                   </span>
                 </button>

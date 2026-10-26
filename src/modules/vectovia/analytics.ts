@@ -131,7 +131,7 @@ export function currentFindings(d: AnalyticsData, f: Filter, taxonOf: (v: Result
   for (const r of d.results) {
     if (!siteOk(r.site_id, f)) continue;
     const v = d.versions.find((x) => x.result_id === r.id && x.version === r.current_version);
-    const s = sampleOf.get(r.sample_id), visit = s && visitOf.get(s.visit_id);
+    const s = sampleOf.get(r.sample_id), visit = s && visitOf.get(s.visit_id ?? "");
     if (!v || !visit || !inRange(visit.occurred_at, f)) continue;
     out.push({ result_id: r.id, site_id: r.site_id, sample_id: r.sample_id, collected_at: visit.occurred_at, status: v.status, taxon: taxonOf(v), quantity: v.quantity });
   }
@@ -148,14 +148,14 @@ export type Findings = {
 /** Positivity: samples with at least one provisional or confirmed finding, out of samples with a final result (none pending). */
 export function findings(d: AnalyticsData, f: Filter, rows: FindingRow[]): Findings {
   const visitOf = new Map(d.visits.map((v) => [v.id, v]));
-  const samples = d.samples.filter((s) => siteOk(s.site_id, f) && inRange(visitOf.get(s.visit_id)?.occurred_at, f));
+  const samples = d.samples.filter((s) => siteOk(s.site_id, f) && inRange(visitOf.get(s.visit_id ?? "")?.occurred_at, f));
   const bySample = new Map<string, FindingRow[]>();
   for (const r of rows) bySample.set(r.sample_id, [...(bySample.get(r.sample_id) ?? []), r]);
   const resulted = samples.filter((s) => { const rs = bySample.get(s.id) ?? []; return rs.length > 0 && rs.every((x) => x.status !== "pending"); });
   const positive = resulted.filter((s) => (bySample.get(s.id) ?? []).some((x) => isPositive(x.status)));
   const months = new Map(monthsIn(f).map((m) => [m, { month: m, samples: 0, positive: 0 }]));
-  for (const s of samples) { const m = months.get(monthKey(visitOf.get(s.visit_id)!.occurred_at)); if (m) m.samples++; }
-  for (const s of positive) { const m = months.get(monthKey(visitOf.get(s.visit_id)!.occurred_at)); if (m) m.positive++; }
+  for (const s of samples) { const m = months.get(monthKey(visitOf.get(s.visit_id ?? "")!.occurred_at)); if (m) m.samples++; }
+  for (const s of positive) { const m = months.get(monthKey(visitOf.get(s.visit_id ?? "")!.occurred_at)); if (m) m.positive++; }
   const species = new Map<string, { taxon: string; findings: number; confirmed: number; sites: Set<string> }>();
   const bySite = new Map<string, { findings: number; samples: number }>();
   for (const s of samples) { const x = bySite.get(s.site_id) ?? { findings: 0, samples: 0 }; x.samples++; bySite.set(s.site_id, x); }
@@ -197,7 +197,7 @@ export function performance(d: AnalyticsData, f: Filter, today = new Date().toIS
   const c2r: number[] = [], r2a: number[] = [], c2a: number[] = [];
   for (const r of d.results) {
     if (!siteOk(r.site_id, f)) continue;
-    const s = sampleOf.get(r.sample_id), visit = s && visitOf.get(s.visit_id);
+    const s = sampleOf.get(r.sample_id), visit = s && visitOf.get(s.visit_id ?? "");
     if (!visit || !inRange(visit.occurred_at, f)) continue;
     const first = d.versions.filter((v) => v.result_id === r.id && v.status !== "pending").sort((a, b) => a.version - b.version)[0];
     if (!first) continue;

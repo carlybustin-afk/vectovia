@@ -135,7 +135,7 @@ export function incursionReport(c: ReportContext, i: Incursion, history: VvEvent
   const visitOf = new Map(c.data.visits.map((v) => [v.id, v]));
   const findingRows = i.findings.map((rid) => {
     const r = c.data.results.find((x) => x.id === rid); const v = r && c.data.versions.find((x) => x.result_id === rid && x.version === r.current_version);
-    const s = r && sampleOf.get(r.sample_id), visit = s && visitOf.get(s.visit_id);
+    const s = r && sampleOf.get(r.sample_id), visit = s && visitOf.get(s.visit_id ?? "");
     return [s?.reference ?? "", r ? siteLabel(r.site_id) : "", visit ? when(visit.occurred_at) : "", v ? resultStatusLabels[v.status] : "", v && isPositive(v.status) ? tx(v) : "",
       v?.quantity !== null && v?.unit ? `${v.quantity} ${unitLabels[v.unit]}` : "", [v?.identified_by, v?.laboratory].filter(Boolean).join(" / ")];
   });
@@ -219,7 +219,7 @@ export function csvRows(c: ReportContext, set: CsvSet): { head: string[]; rows: 
     const visitOf = new Map(c.data.visits.map((v) => [v.id, v]));
     const out: (string | number | null)[][] = [];
     for (const s of c.data.samples) {
-      const visit = visitOf.get(s.visit_id);
+      const visit = visitOf.get(s.visit_id ?? "");
       if (!siteOk(s.site_id) || !visit || !inPeriod(visit.occurred_at, f)) continue;
       const rs = c.data.results.filter((r) => r.sample_id === s.id);
       if (!rs.length) out.push([s.id, s.reference, ref(s.site_id), visit.occurred_at, methodLabels[s.method], "", "", "No result yet", "", "", "", "", "", "", ""]);

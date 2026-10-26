@@ -25,6 +25,7 @@ import { Route as AppPlatformRouteImport } from './routes/app.platform'
 import { Route as AppWorkspaceRouteImport } from './routes/app.workspace'
 import { Route as AppVectoviaIndexRouteImport } from './routes/app.vectovia.index'
 import { Route as AppVectoviaAnalyticsRouteImport } from './routes/app.vectovia.analytics'
+import { Route as AppVectoviaFieldRecordsRouteImport } from './routes/app.vectovia.field-records'
 import { Route as AppVectoviaIncursionsRouteImport } from './routes/app.vectovia.incursions'
 import { Route as AppVectoviaLibraryRouteImport } from './routes/app.vectovia.library'
 import { Route as AppVectoviaObligationsRouteImport } from './routes/app.vectovia.obligations'
@@ -116,6 +117,11 @@ const AppVectoviaAnalyticsRoute = AppVectoviaAnalyticsRouteImport.update({
   path: '/vectovia/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVectoviaFieldRecordsRoute = AppVectoviaFieldRecordsRouteImport.update({
+  id: '/vectovia/field-records',
+  path: '/vectovia/field-records',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVectoviaIncursionsRoute = AppVectoviaIncursionsRouteImport.update({
   id: '/vectovia/incursions',
   path: '/vectovia/incursions',
@@ -183,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/app/workspace': typeof AppWorkspaceRoute
   '/app/': typeof AppIndexRoute
   '/app/vectovia/analytics': typeof AppVectoviaAnalyticsRoute
+  '/app/vectovia/field-records': typeof AppVectoviaFieldRecordsRoute
   '/app/vectovia/incursions': typeof AppVectoviaIncursionsRoute
   '/app/vectovia/library': typeof AppVectoviaLibraryRoute
   '/app/vectovia/obligations': typeof AppVectoviaObligationsRoute
@@ -210,6 +217,7 @@ export interface FileRoutesByTo {
   '/app/workspace': typeof AppWorkspaceRoute
   '/app': typeof AppIndexRoute
   '/app/vectovia/analytics': typeof AppVectoviaAnalyticsRoute
+  '/app/vectovia/field-records': typeof AppVectoviaFieldRecordsRoute
   '/app/vectovia/incursions': typeof AppVectoviaIncursionsRoute
   '/app/vectovia/library': typeof AppVectoviaLibraryRoute
   '/app/vectovia/obligations': typeof AppVectoviaObligationsRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/app/workspace': typeof AppWorkspaceRoute
   '/app/': typeof AppIndexRoute
   '/app/vectovia/analytics': typeof AppVectoviaAnalyticsRoute
+  '/app/vectovia/field-records': typeof AppVectoviaFieldRecordsRoute
   '/app/vectovia/incursions': typeof AppVectoviaIncursionsRoute
   '/app/vectovia/library': typeof AppVectoviaLibraryRoute
   '/app/vectovia/obligations': typeof AppVectoviaObligationsRoute
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/app/workspace'
     | '/app/'
     | '/app/vectovia/analytics'
+    | '/app/vectovia/field-records'
     | '/app/vectovia/incursions'
     | '/app/vectovia/library'
     | '/app/vectovia/obligations'
@@ -296,6 +306,7 @@ export interface FileRouteTypes {
     | '/app/workspace'
     | '/app'
     | '/app/vectovia/analytics'
+    | '/app/vectovia/field-records'
     | '/app/vectovia/incursions'
     | '/app/vectovia/library'
     | '/app/vectovia/obligations'
@@ -324,6 +335,7 @@ export interface FileRouteTypes {
     | '/app/workspace'
     | '/app/'
     | '/app/vectovia/analytics'
+    | '/app/vectovia/field-records'
     | '/app/vectovia/incursions'
     | '/app/vectovia/library'
     | '/app/vectovia/obligations'
@@ -465,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppVectoviaAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/vectovia/field-records': {
+      id: '/app/vectovia/field-records'
+      path: '/vectovia/field-records'
+      fullPath: '/app/vectovia/field-records'
+      preLoaderRoute: typeof AppVectoviaFieldRecordsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/vectovia/incursions': {
       id: '/app/vectovia/incursions'
       path: '/vectovia/incursions'
@@ -543,6 +562,7 @@ interface AppRouteChildren {
   AppWorkspaceRoute: typeof AppWorkspaceRoute
   AppIndexRoute: typeof AppIndexRoute
   AppVectoviaAnalyticsRoute: typeof AppVectoviaAnalyticsRoute
+  AppVectoviaFieldRecordsRoute: typeof AppVectoviaFieldRecordsRoute
   AppVectoviaIncursionsRoute: typeof AppVectoviaIncursionsRoute
   AppVectoviaLibraryRoute: typeof AppVectoviaLibraryRoute
   AppVectoviaObligationsRoute: typeof AppVectoviaObligationsRoute
@@ -561,6 +581,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppWorkspaceRoute: AppWorkspaceRoute,
   AppIndexRoute: AppIndexRoute,
   AppVectoviaAnalyticsRoute: AppVectoviaAnalyticsRoute,
+  AppVectoviaFieldRecordsRoute: AppVectoviaFieldRecordsRoute,
   AppVectoviaIncursionsRoute: AppVectoviaIncursionsRoute,
   AppVectoviaLibraryRoute: AppVectoviaLibraryRoute,
   AppVectoviaObligationsRoute: AppVectoviaObligationsRoute,

@@ -132,7 +132,7 @@ export type Visit = {
   exposure_started_at: string | null; exposure_ended_at: string | null; created_by: string; updated_by: string | null; updated_at: string | null;
 };
 export type Sample = {
-  id: string; visit_id: string; site_id: string; reference: string; method: SampleMethod; notes: string | null;
+  id: string; visit_id: string | null; inspection_id: string | null; site_id: string; reference: string; method: SampleMethod; notes: string | null;
   status: "awaiting_result" | "resulted"; created_by: string; recorded_at: string;
 };
 export type ScheduleRow = {
@@ -150,7 +150,7 @@ export async function loadVisits(ws: string): Promise<Visit[]> {
     .eq("workspace_id", ws).order("occurred_at", { ascending: false }).limit(500)) as Visit[];
 }
 export async function loadSamples(ws: string): Promise<Sample[]> {
-  return must(await db.from("vv_samples").select("id, visit_id, site_id, reference, method, notes, status, created_by, recorded_at")
+  return must(await db.from("vv_samples").select("id, visit_id, inspection_id, site_id, reference, method, notes, status, created_by, recorded_at")
     .eq("workspace_id", ws).order("recorded_at", { ascending: false }).limit(1000)) as Sample[];
 }
 export async function loadSchedule(ws: string): Promise<ScheduleRow[]> {
@@ -191,9 +191,9 @@ export const day = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleDateString("en-GB", { timeZone: "Europe/London", day: "numeric", month: "short", year: "numeric" }) : "—";
 
 // ---------- Results, risk assessment and actions (V3, rev 24) -------------------------------
-export type ResultStatus = "pending" | "provisional" | "confirmed" | "inconclusive";
+export type ResultStatus = "pending" | "provisional" | "confirmed" | "inconclusive" | "negative";
 export const resultStatusLabels: Record<ResultStatus, string> = {
-  pending: "Result pending", provisional: "Provisional", confirmed: "Confirmed", inconclusive: "Inconclusive",
+  pending: "Result pending", provisional: "Provisional", confirmed: "Confirmed (official)", inconclusive: "Inconclusive", negative: "Negative",
 };
 export type Unit = "individuals" | "females" | "males" | "eggs" | "larvae" | "pupae" | "presence";
 export const unitLabels: Record<Unit, string> = {
@@ -267,8 +267,9 @@ export const riskRpc = {
   saveResult: (id: string, sample: string, r: ResultInput, reason: string | null) =>
     db.rpc("vv_save_result", {
       _id: id, _sample: sample, _status: r.status,
-      _taxon: r.taxon.startsWith("s:") ? r.taxon.slice(2) : null, _council_taxon: r.taxon.startsWith("c:") ? r.taxon.slice(2) : null,
-      _quantity: r.quantity === "" ? null : Number(r.quantity), _unit: r.unit || null, _method: r.method || null,
+      _taxon: r.status !== "negative" && r.taxon.startsWith("s:") ? r.taxon.slice(2) : null,
+      _council_taxon: r.status !== "negative" && r.taxon.startsWith("c:") ? r.taxon.slice(2) : null,
+      _quantity: r.status === "negative" || r.quantity === "" ? null : Number(r.quantity), _unit: r.unit || null, _method: r.method || null,
       _identified_by: r.identified_by, _laboratory: r.laboratory, _lab_reference: r.lab_reference, _result_date: r.result_date || null,
       _uncertainty: r.uncertainty, _reason: reason,
     }),
