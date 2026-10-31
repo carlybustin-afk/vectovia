@@ -21,6 +21,7 @@ const menu: readonly MenuGroup[] = [
     { links: [{ to: "/app/vectovia", label: "Dashboard", exact: true }] },
     { heading: "Field", links: [{ to: "/app/vectovia/visits", label: "Field work" }, { to: "/app/vectovia/field-records", label: "Inspections and surveys" }, { to: "/app/vectovia/results", label: "Results" }] },
     { heading: "Response", links: [{ to: "/app/vectovia/risk", label: "Risk and actions" }, { to: "/app/vectovia/incursions", label: "Incursions" }] },
+    { heading: "Compliance", links: [{ to: "/app/vectovia/ihr-records", label: "IHR records" }] },
     { heading: "Insight", links: [{ to: "/app/vectovia/analytics", label: "Analytics" }, { to: "/app/vectovia/reports", label: "Reports and exports" }] },
     { heading: "Set-up", links: [{ to: "/app/vectovia/sites", label: "Sites" }, { to: "/app/vectovia/traps", label: "Traps" },
       { to: "/app/vectovia/obligations", label: "Obligation sets" }, { to: "/app/vectovia/library", label: "Species and trap library" }, { to: "/app/vectovia/setup", label: "Programmes and lists" }] },

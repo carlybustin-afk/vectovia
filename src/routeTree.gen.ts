@@ -27,6 +27,7 @@ import { Route as AppWorkspaceRouteImport } from './routes/app.workspace'
 import { Route as AppVectoviaIndexRouteImport } from './routes/app.vectovia.index'
 import { Route as AppVectoviaAnalyticsRouteImport } from './routes/app.vectovia.analytics'
 import { Route as AppVectoviaFieldRecordsRouteImport } from './routes/app.vectovia.field-records'
+import { Route as AppVectoviaIhrRecordsRouteImport } from './routes/app.vectovia.ihr-records'
 import { Route as AppVectoviaIncursionsRouteImport } from './routes/app.vectovia.incursions'
 import { Route as AppVectoviaLibraryRouteImport } from './routes/app.vectovia.library'
 import { Route as AppVectoviaObligationsRouteImport } from './routes/app.vectovia.obligations'
@@ -128,6 +129,11 @@ const AppVectoviaFieldRecordsRoute = AppVectoviaFieldRecordsRouteImport.update({
   path: '/vectovia/field-records',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVectoviaIhrRecordsRoute = AppVectoviaIhrRecordsRouteImport.update({
+  id: '/vectovia/ihr-records',
+  path: '/vectovia/ihr-records',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVectoviaIncursionsRoute = AppVectoviaIncursionsRouteImport.update({
   id: '/vectovia/incursions',
   path: '/vectovia/incursions',
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/vectovia/analytics': typeof AppVectoviaAnalyticsRoute
   '/app/vectovia/field-records': typeof AppVectoviaFieldRecordsRoute
+  '/app/vectovia/ihr-records': typeof AppVectoviaIhrRecordsRoute
   '/app/vectovia/incursions': typeof AppVectoviaIncursionsRoute
   '/app/vectovia/library': typeof AppVectoviaLibraryRoute
   '/app/vectovia/obligations': typeof AppVectoviaObligationsRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/app/vectovia/analytics': typeof AppVectoviaAnalyticsRoute
   '/app/vectovia/field-records': typeof AppVectoviaFieldRecordsRoute
+  '/app/vectovia/ihr-records': typeof AppVectoviaIhrRecordsRoute
   '/app/vectovia/incursions': typeof AppVectoviaIncursionsRoute
   '/app/vectovia/library': typeof AppVectoviaLibraryRoute
   '/app/vectovia/obligations': typeof AppVectoviaObligationsRoute
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/vectovia/analytics': typeof AppVectoviaAnalyticsRoute
   '/app/vectovia/field-records': typeof AppVectoviaFieldRecordsRoute
+  '/app/vectovia/ihr-records': typeof AppVectoviaIhrRecordsRoute
   '/app/vectovia/incursions': typeof AppVectoviaIncursionsRoute
   '/app/vectovia/library': typeof AppVectoviaLibraryRoute
   '/app/vectovia/obligations': typeof AppVectoviaObligationsRoute
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/vectovia/analytics'
     | '/app/vectovia/field-records'
+    | '/app/vectovia/ihr-records'
     | '/app/vectovia/incursions'
     | '/app/vectovia/library'
     | '/app/vectovia/obligations'
@@ -318,6 +328,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/vectovia/analytics'
     | '/app/vectovia/field-records'
+    | '/app/vectovia/ihr-records'
     | '/app/vectovia/incursions'
     | '/app/vectovia/library'
     | '/app/vectovia/obligations'
@@ -348,6 +359,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/vectovia/analytics'
     | '/app/vectovia/field-records'
+    | '/app/vectovia/ihr-records'
     | '/app/vectovia/incursions'
     | '/app/vectovia/library'
     | '/app/vectovia/obligations'
@@ -503,6 +515,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppVectoviaFieldRecordsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/vectovia/ihr-records': {
+      id: '/app/vectovia/ihr-records'
+      path: '/vectovia/ihr-records'
+      fullPath: '/app/vectovia/ihr-records'
+      preLoaderRoute: typeof AppVectoviaIhrRecordsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/vectovia/incursions': {
       id: '/app/vectovia/incursions'
       path: '/vectovia/incursions'
@@ -583,6 +602,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppVectoviaAnalyticsRoute: typeof AppVectoviaAnalyticsRoute
   AppVectoviaFieldRecordsRoute: typeof AppVectoviaFieldRecordsRoute
+  AppVectoviaIhrRecordsRoute: typeof AppVectoviaIhrRecordsRoute
   AppVectoviaIncursionsRoute: typeof AppVectoviaIncursionsRoute
   AppVectoviaLibraryRoute: typeof AppVectoviaLibraryRoute
   AppVectoviaObligationsRoute: typeof AppVectoviaObligationsRoute
@@ -603,6 +623,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppVectoviaAnalyticsRoute: AppVectoviaAnalyticsRoute,
   AppVectoviaFieldRecordsRoute: AppVectoviaFieldRecordsRoute,
+  AppVectoviaIhrRecordsRoute: AppVectoviaIhrRecordsRoute,
   AppVectoviaIncursionsRoute: AppVectoviaIncursionsRoute,
   AppVectoviaLibraryRoute: AppVectoviaLibraryRoute,
   AppVectoviaObligationsRoute: AppVectoviaObligationsRoute,

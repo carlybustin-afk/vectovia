@@ -103,7 +103,7 @@ function BoundaryForm({ ws, site, areas, onDone }: { ws: string; site: Site; are
   const [reason, setReason] = useState(site.risk_reason ?? "");
   const poe = pointOfEntryTypes.includes(type);
   const zoneM = Number(zone);
-  const zoneOk = Number.isInteger(zoneM) && zoneM >= (poe ? 400 : 0) && zoneM <= 5000;
+  const zoneOk = Number.isInteger(zoneM) && zoneM >= 0 && zoneM <= 5000;
   const boundary = polygonFrom(draft.pts);
   const save = useMutation({
     mutationFn: () => run(obligationRpc.saveGeometry(site.id, type, boundary, zoneM, reason)),
@@ -120,13 +120,13 @@ function BoundaryForm({ ws, site, areas, onDone }: { ws: string; site: Site; are
       <p className="font-semibold text-primary">Boundary and zone: {site.name}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field id="bf-type" label="Type of site">
-          <select id="bf-type" className={selectClass} value={type} onChange={(e) => { const t = e.target.value as SiteType; setType(t); if (pointOfEntryTypes.includes(t) && zoneM < 400) setZone("400"); }}>
+          <select id="bf-type" className={selectClass} value={type} onChange={(e) => setType(e.target.value as SiteType)}>
             {(Object.keys(siteTypeLabels) as SiteType[]).map((t) => <option key={t} value={t}>{siteTypeLabels[t]}</option>)}
           </select>
         </Field>
       </div>
       <ZoneSlider poe={poe} value={zone} onChange={setZone} />
-      {!zoneOk ? <p role="alert" className="text-sm text-primary">{poe ? "Enter a zone of 400 to 5,000 metres." : "Enter a zone of 0 to 5,000 metres."}</p> : null}
+      {!zoneOk ? <p role="alert" className="text-sm text-primary">Enter a zone of 0 to 5,000 metres.</p> : null}
       <Field id="bf-why" label="Why this site is monitored (optional)" hint="For example: international freight, modelled climate risk, previous detection.">
         <Input id="bf-why" className="bg-background" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
@@ -150,8 +150,9 @@ function BoundaryForm({ ws, site, areas, onDone }: { ws: string; site: Site; are
 /** Zone width: a slider with the 400 m best-practice point marked, plus a box for exact values up to 5,000 m. */
 const BEST_M = 400, SLIDER_MAX = 2000;
 export function ZoneSlider({ poe, value, onChange }: { poe: boolean; value: string; onChange: (v: string) => void }) {
-  const min = poe ? BEST_M : 0;
+  const min = 0;
   const n = Number(value) || 0;
+  const short = poe && n < BEST_M;
   const at = ((BEST_M - min) / (SLIDER_MAX - min)) * 100;
   const where = n === BEST_M ? "At best practice." : n < BEST_M ? "Smaller than best practice." : "Larger than best practice.";
   return (
@@ -166,7 +167,7 @@ export function ZoneSlider({ poe, value, onChange }: { poe: boolean; value: stri
           <span aria-hidden="true" className="absolute top-0 h-5 w-0.5 bg-primary" style={{ left: `calc(${at}% + ${(0.5 - at / 100) * 16}px)` }} />
           <span id="bf-zone-best" className="absolute top-6 whitespace-nowrap rounded border border-primary bg-background px-1.5 py-0.5 text-[11px] font-semibold text-primary"
             style={{ left: `calc(${at}% + ${(0.5 - at / 100) * 16}px)`, transform: at < 10 ? "none" : "translateX(-50%)" }}>
-            ▲ 400 m: best practice{poe ? " and the IHR minimum" : ""}
+            ▲ 400 m: best practice{poe ? " (IHR)" : ""}
           </span>
         </div>
         <label className="flex items-center gap-1 text-sm text-primary">
@@ -174,8 +175,14 @@ export function ZoneSlider({ poe, value, onChange }: { poe: boolean; value: stri
           <Input id="bf-zone" className="w-24 bg-background" inputMode="numeric" value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))} /> m
         </label>
       </div>
+      {short ? (
+        <p role="status" className="border-l-4 border-accent bg-background px-2 py-1 text-sm text-primary">
+          ▲ Under 400 m. IHR Annex 5 recommends at least 400 m around a point of entry's operational areas. You can save a smaller zone,
+          but the zone requirement will show as partly met. Say why in “Why this site is monitored”.
+        </p>
+      ) : null}
       <p className="text-xs text-muted-foreground">
-        {where} {poe ? "Points of entry keep at least 400 m around their operational areas (IHR Annex 5). Widen it where the risk assessment calls for it."
+        {where} {poe ? "400 m around the operational areas is the IHR recommendation for points of entry. Widen it where the risk assessment calls for it."
           : "400 m is the recommended zone. Make it smaller or larger to suit the site (up to 5,000 m; type a value over 2,000 in the box)."}
       </p>
     </fieldset>
