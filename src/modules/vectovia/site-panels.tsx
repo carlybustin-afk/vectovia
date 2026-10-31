@@ -262,6 +262,13 @@ export function RagTag({ status }: { status: Rag }) {
   return <span className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${r.tone}`}><span aria-hidden="true">{r.mark}</span>{r.label}</span>;
 }
 
+/** A whole site's status: same colours as the requirement tags, with site-level wording. */
+export function SiteRagTag({ status }: { status: "red" | "amber" | "green" }) {
+  const r = ragLabels[status];
+  const label = { red: "Needs action", amber: "Some gaps", green: "On track" }[status];
+  return <span className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${r.tone}`}><span aria-hidden="true">{r.mark}</span>{label}</span>;
+}
+
 export function CompliancePanel({ ws, site, canManage }: { ws: string; site: Site; canManage: boolean }) {
   const obligations = useObligations(), adopted = useSiteObligations(ws), compliance = useCompliance(ws, site.id);
   const refresh = useRefresh(ws);

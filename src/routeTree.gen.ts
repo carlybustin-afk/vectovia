@@ -21,6 +21,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppNationalRouteImport } from './routes/app.national'
 import { Route as AppPlatformRouteImport } from './routes/app.platform'
 import { Route as AppWorkspaceRouteImport } from './routes/app.workspace'
 import { Route as AppVectoviaIndexRouteImport } from './routes/app.vectovia.index'
@@ -95,6 +96,11 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNationalRoute = AppNationalRouteImport.update({
+  id: '/national',
+  path: '/national',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPlatformRoute = AppPlatformRouteImport.update({
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/terms': typeof TermsRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/national': typeof AppNationalRoute
   '/app/platform': typeof AppPlatformRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/app/': typeof AppIndexRoute
@@ -213,6 +220,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/terms': typeof TermsRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/national': typeof AppNationalRoute
   '/app/platform': typeof AppPlatformRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/app': typeof AppIndexRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/terms': typeof TermsRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/national': typeof AppNationalRoute
   '/app/platform': typeof AppPlatformRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/app/': typeof AppIndexRoute
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/terms'
     | '/verify-email'
+    | '/app/national'
     | '/app/platform'
     | '/app/workspace'
     | '/app/'
@@ -302,6 +312,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/terms'
     | '/verify-email'
+    | '/app/national'
     | '/app/platform'
     | '/app/workspace'
     | '/app'
@@ -331,6 +342,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/terms'
     | '/verify-email'
+    | '/app/national'
     | '/app/platform'
     | '/app/workspace'
     | '/app/'
@@ -449,6 +461,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/national': {
+      id: '/app/national'
+      path: '/national'
+      fullPath: '/app/national'
+      preLoaderRoute: typeof AppNationalRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/platform': {
       id: '/app/platform'
       path: '/platform'
@@ -558,6 +577,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppNationalRoute: typeof AppNationalRoute
   AppPlatformRoute: typeof AppPlatformRoute
   AppWorkspaceRoute: typeof AppWorkspaceRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -577,6 +597,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppNationalRoute: AppNationalRoute,
   AppPlatformRoute: AppPlatformRoute,
   AppWorkspaceRoute: AppWorkspaceRoute,
   AppIndexRoute: AppIndexRoute,

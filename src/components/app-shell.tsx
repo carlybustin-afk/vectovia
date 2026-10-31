@@ -7,6 +7,7 @@ import { BackendError, db } from "@/lib/backend";
 import { signOutAndClear, useSession } from "@/lib/session";
 import { useWorkspace } from "@/lib/workspace";
 import type { Workspace } from "@/lib/backend";
+import { useIsNational } from "@/modules/vectovia/dashboards";
 import { canUse, levelIn, productLabels, useIsPlatformAdmin, useMyProducts, type Product } from "@/lib/products";
 
 // Side menu, grouped by product (owner decision 2026-10-17: one slim top bar
@@ -14,7 +15,7 @@ import { canUse, levelIn, productLabels, useIsPlatformAdmin, useMyProducts, type
 // access level (rev 20), content review to First Line's content team, Platform
 // to platform admins. The menu only hides links; the database decides access.
 type MenuLink = { to: string; label: string; exact?: boolean; also?: readonly string[] };
-type MenuGroup = { key: string; label: string; product?: Product; who?: "reviewer" | "platform"; parts: readonly { heading?: string; links: readonly MenuLink[] }[] };
+type MenuGroup = { key: string; label: string; product?: Product; who?: "reviewer" | "platform" | "national"; parts: readonly { heading?: string; links: readonly MenuLink[] }[] };
 const menu: readonly MenuGroup[] = [
   { key: "vectovia", label: "Vectovia", product: "vectovia", parts: [
     { links: [{ to: "/app/vectovia", label: "Dashboard", exact: true }] },
@@ -27,6 +28,7 @@ const menu: readonly MenuGroup[] = [
   { key: "settings", label: "Organisation settings", parts: [
     { links: [{ to: "/app/workspace", label: "Members" }, { to: "/app", label: "Your organisations", exact: true }] },
   ] },
+  { key: "national", label: "National", who: "national", parts: [{ links: [{ to: "/app/national", label: "National view" }] }] },
   { key: "platform", label: "Platform", who: "platform", parts: [{ links: [{ to: "/app/platform", label: "Organisations" }] }] },
 ];
 const isOn = (path: string, l: MenuLink) => (l.exact ? path === l.to : path === l.to || path.startsWith(`${l.to}/`)) || !!l.also?.some((a) => path.startsWith(a));
@@ -192,9 +194,10 @@ export function AppShell({ title, intro, children, needsWorkspace = true, produc
   const { schema, workspaces, current, select } = useWorkspace();
   const products = useMyProducts();
   const isPlatformAdmin = useIsPlatformAdmin();
+  const isNational = useIsNational();
   const [menuOpen, setMenuOpen] = useState(false);
   const has = (p: Product) => canUse(levelIn(products.data, current?.id, p));
-  const groups = menu.filter((g) => (g.product ? has(g.product) : g.who === "reviewer" ? isReviewer : g.who === "platform" ? isPlatformAdmin : true));
+  const groups = menu.filter((g) => (g.product ? has(g.product) : g.who === "reviewer" ? isReviewer : g.who === "platform" ? isPlatformAdmin : g.who === "national" ? isNational : true));
   const signOut = async () => { await signOutAndClear(qc); navigate({ to: "/sign-in", replace: true }); };
 
   let body: ReactNode;
