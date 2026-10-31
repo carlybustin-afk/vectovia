@@ -63,13 +63,13 @@ select throws_ok($$select public.vv_save_site_geometry('c2000000-0000-0000-0000-
 select pg_temp.as_user('00000000-0000-0000-0000-0000000202a2');
 select throws_ok($$select public.vv_save_site_geometry('c2000000-0000-0000-0000-00000000000a','port','{"type":"Polygon","coordinates":[[[1,51],[2,51],[2,52]]]}',400,null)$$,
   '22023', null, 'an invalid boundary is refused');
-select throws_ok($$select public.vv_save_site_geometry('c2000000-0000-0000-0000-00000000000a','port',pg_temp.square(),300,null)$$, '23514', null,
-  'a point of entry cannot have a zone under 400 m');
+select lives_ok($$select public.vv_save_site_geometry('c2000000-0000-0000-0000-00000000000a','port',pg_temp.square(),300,null)$$,
+  'a point of entry may have a zone under 400 m (owner decision 2026-11-01; v2-006)');
 select lives_ok($$select public.vv_save_site_geometry('c2000000-0000-0000-0000-00000000000a','port',pg_temp.square(),400,'SYNTHETIC international freight')$$,
   'a manager records the type, boundary and 400 m zone');
 select is((select site_type || ':' || zone_m from public.vv_sites where id = 'c2000000-0000-0000-0000-00000000000a'), 'port:400', 'they are saved');
-select is((select detail ->> 'boundary_changed' from public.vv_events where record_id = 'c2000000-0000-0000-0000-00000000000a' and kind = 'geometry_changed'),
-  'true', 'the change is in the site history');
+select is((select detail ->> 'boundary_changed' from public.vv_events where record_id = 'c2000000-0000-0000-0000-00000000000a' and kind = 'geometry_changed'
+  order by detail ->> 'boundary_changed' desc limit 1), 'true', 'the change is in the site history');
 select ok(public.vv_point_in_site_zone('c2000000-0000-0000-0000-00000000000a', 51.121, 1.3363), 'the site zone check works');
 
 -- Operational areas
